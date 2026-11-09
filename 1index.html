@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>İklimLab</title>
+<style>
+:root{
+  --bg:#EEF3F1;--surface:#FFFFFF;--ink:#14282B;--muted:#55696B;--line:#CBD8D5;
+  --co2:#C98203;--co2soft:#F6E2B8;--leaf:#1F7A53;--leafsoft:#D3EBDF;--sun:#D9A90A;--risk:#B9412B;--sky:#2F6E8C;--violet:#6A55A8;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1C1E;--surface:#172A2D;--ink:#E4EEEC;--muted:#9DB2B0;--line:#2A4246;
+  --co2:#F0A92A;--co2soft:#4A3712;--leaf:#4FBF8A;--leafsoft:#173F2F;--sun:#F2CB3A;--risk:#E2705A;--sky:#6FB3D2;--violet:#A895E6;color-scheme:dark;}}
+:root[data-theme="dark"]{--bg:#0F1C1E;--surface:#172A2D;--ink:#E4EEEC;--muted:#9DB2B0;--line:#2A4246;
+  --co2:#F0A92A;--co2soft:#4A3712;--leaf:#4FBF8A;--leafsoft:#173F2F;--sun:#F2CB3A;--risk:#E2705A;--sky:#6FB3D2;--violet:#A895E6;color-scheme:dark;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.55}
+h1,h2,h3{font-family:"Bricolage Grotesque","Atkinson Hyperlegible",system-ui,sans-serif;line-height:1.12;margin:0}
+.wrap{max-width:1220px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px}
+.brand small{font-family:"Atkinson Hyperlegible",sans-serif;font-weight:400;font-size:13px;color:var(--muted)}
+.switches{display:flex;gap:10px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;padding:8px 0 26px}
+.hero h1{font-size:clamp(32px,5vw,58px);font-weight:800;letter-spacing:-.02em;max-width:16ch}
+.hero p.lead{color:var(--muted);max-width:56ch;margin:14px 0 20px}
+.readout{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-end}
+.big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(42px,5.6vw,72px);line-height:.9;font-variant-numeric:tabular-nums}
+.big small{font-size:.3em;font-weight:700;color:var(--muted);margin-left:6px}
+.sub{color:var(--muted);font-size:14px}
+.jar{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:28px 28px 120px 120px;overflow:hidden;min-height:290px}
+.jar canvas{position:absolute;inset:0;width:100%;height:100%}
+.jar .legend{position:absolute;left:16px;bottom:14px;right:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);justify-content:center}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:22px;align-items:flex-end}
+nav.tabs .grp{flex:none;font-size:12px;color:var(--muted);padding:0 6px 14px 14px;border-left:1px solid var(--line);margin-left:6px}
+nav.tabs .grp:first-child{border-left:0;margin-left:0;padding-left:0}
+nav.tabs button{flex:none;border:0;background:none;font:inherit;color:var(--muted);padding:12px 11px;cursor:pointer;border-bottom:3px solid transparent;font-weight:700}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--co2)}
+.panel{display:none;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:26px;padding-bottom:40px}
+.panel.on{display:grid}
+.panel.wide.on{display:block}
+.controls{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;align-self:start}
+.controls h2{font-size:24px;margin-bottom:6px}
+.controls>p{color:var(--muted);margin:0 0 12px;font-size:15px}
+.controls h4{margin:18px 0 4px;font-size:15px;font-family:"Bricolage Grotesque",sans-serif}
+.field{margin:12px 0}
+.field label{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:14.5px}
+.field label output{font-variant-numeric:tabular-nums;color:var(--co2);white-space:nowrap}
+.hint{font-size:12.5px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--co2);margin:6px 0 0}
+input[type=number],input[type=text],select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:700;margin:10px 0;font-size:14.5px}
+.check input{width:20px;height:20px;accent-color:var(--leaf);flex:none;margin-top:1px}
+.results{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
+.card h3{font-size:18px;margin-bottom:10px}
+.chart{width:100%;height:270px;display:block}
+.chart.tall{height:320px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{border-left:4px solid var(--co2);padding:4px 0 4px 12px}
+.stat.g{border-color:var(--leaf)}.stat.s{border-color:var(--sun)}.stat.r{border-color:var(--risk)}.stat.b{border-color:var(--sky)}
+.stat b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-size:24px;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:13px;color:var(--muted)}
+.explain{background:var(--leafsoft);border-radius:14px;padding:14px 16px;font-size:15px}
+.explain p{margin:0 0 8px}.explain p:last-child{margin:0}
+.formula{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:13px;background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:pre;margin-top:10px}
+.src{font-size:12.5px;color:var(--muted);margin-top:8px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.ok-sum{color:var(--leaf);font-weight:700;font-size:13px}.bad-sum{color:var(--risk);font-weight:700;font-size:13px}
+.scroll{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:14.5px}
+table.t th,table.t td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t th{font-size:13px;color:var(--muted);font-weight:700}
+table.t td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t tr.sel td{background:var(--co2soft)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:12px;padding:9px 15px;background:var(--ink);color:var(--bg);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700}
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.hz{border:1px solid var(--line);border-radius:14px;padding:12px}
+.hz h4{margin:0 0 6px;font-family:"Bricolage Grotesque",sans-serif}
+.quiz-q{font-weight:700;margin:6px 0}
+.quiz-opts{display:flex;flex-direction:column;gap:6px}
+.quiz-opts button{text-align:left;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
+.quiz-opts button.ok{border-color:var(--leaf);background:var(--leafsoft)}
+.quiz-opts button.no{border-color:var(--risk)}
+.qexp{font-size:14px;color:var(--muted);margin-top:4px}
+dl.gloss{display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:10px 18px;margin:0}
+dl.gloss dt{font-weight:700}dl.gloss dd{margin:0;color:var(--ink)}
+footer{color:var(--muted);font-size:13px;padding:24px 0 40px;border-top:1px solid var(--line)}
+footer ol{padding-left:20px;margin:8px 0}
+.lvl-o .lu,.lvl-o .uo,.lvl-l .uo{display:none}
+@media (max-width:880px){.hero,.panel.on{grid-template-columns:1fr}.jar{min-height:250px}dl.gloss{grid-template-columns:1fr}}
+@media print{header.top .switches,nav.tabs,.hero,.panel:not(#p-plan),.no-print{display:none!important}#p-plan{display:block!important}}
+
+/* MotionLab: accessible vector process animations, no external assets */
+.motion-card{overflow:hidden}.motion-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.motion-note{font-size:12px;color:var(--muted);margin:5px 0 0}.motion-scene{width:100%;height:auto;display:block;margin-top:10px;background:var(--bg);border-radius:14px}
+.motion-scene text{font:600 13px system-ui,sans-serif;fill:var(--ink)}.motion-scene .mini{font-size:11px;fill:var(--muted)}
+.motion-scene .node{fill:var(--surface);stroke:var(--line);stroke-width:2}.motion-scene .pipe{fill:none;stroke:var(--line);stroke-width:9;stroke-linecap:round}
+.motion-scene .track{fill:none;stroke:var(--leaf);stroke-width:4;stroke-linecap:round;stroke-dasharray:8 12;animation:flowmove 1.15s linear infinite}
+.motion-scene .track.warn{stroke:var(--co2)}.motion-scene .track.blue{stroke:var(--sky)}
+.motion-scene .pulse{transform-box:fill-box;transform-origin:center;animation:breathe 2.2s ease-in-out infinite}
+.motion-scene .sunray{transform-box:fill-box;transform-origin:center;animation:spin 18s linear infinite}
+.motion-scene .roadcar{animation:drive 6s ease-in-out infinite alternate}
+.motion-paused .track,.motion-paused .pulse,.motion-paused .sunray,.motion-paused .roadcar{animation-play-state:paused!important}
+@keyframes flowmove{to{stroke-dashoffset:-40}}@keyframes breathe{50%{opacity:.4;transform:scale(.9)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes drive{to{transform:translateX(155px)}}
+@media(prefers-reduced-motion:reduce){.motion-scene *{animation:none!important}}
+@media print{.motion-card{display:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M7 20c4-6 8 2 12-4s6-3 8-1" fill="none" stroke="var(--leaf)" stroke-width="3" stroke-linecap="round"/><circle cx="23" cy="11" r="3" fill="var(--co2)"/></svg>
+      <div>İklimLab<br><small data-i="brandSub"></small></div>
+    </div>
+    <div class="switches">
+      <div class="seg" role="group" aria-label="Language"><button data-lang="tr">TR</button><button data-lang="en">EN</button></div>
+      <div class="seg" role="group" id="lvlSeg"><button data-lvl="o" data-i="lvlO"></button><button data-lvl="l" data-i="lvlL"></button><button data-lvl="u" data-i="lvlU"></button></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1 data-i="heroH"></h1>
+      <p class="lead" data-i="heroP"></p>
+      <div class="readout">
+        <div><div class="big" id="hTotal"></div><div class="sub" data-i="heroTot"></div></div>
+        <div><div class="big" id="hPer" style="font-size:clamp(30px,3.8vw,46px)"></div><div class="sub"><b id="hDelta"></b> <span data-i="heroVs"></span></div></div>
+      </div>
+    </div>
+    <div class="jar"><canvas id="jar"></canvas>
+      <div class="legend"><span><i class="dot" style="background:var(--co2)"></i><span data-i="jarE"></span></span><span><i class="dot" style="background:var(--leaf)"></i><span data-i="jarA"></span></span></div>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="panels"></main>
+
+  <footer>
+    <div data-i="footNote"></div>
+    <ol>
+      <li>IPCC (2006, 2019 Refinement). Guidelines for National Greenhouse Gas Inventories, Vol. 2 (Energy) &amp; Vol. 5 (Waste).</li>
+      <li>IPCC (2021). AR6 WGI, Summary for Policymakers: Tables SPM.1, SPM.2; Figure SPM.6; Chapter 7 (GWP100, ERF, ECS).</li>
+      <li>IPCC (2022). AR6 WGII, risk framework (hazard, exposure, vulnerability).</li>
+      <li>IPCC (2023). AR6 Synthesis Report, SPM Table B.5 / C.1 (emission reductions relative to 2019).</li>
+      <li>Friedlingstein et al. (2026), Global Carbon Budget 2025, Earth System Science Data 18, 3211; 2026 başlangıç bütçesi (%50): 170 / 525 / 1055 GtCO₂. https://doi.org/10.5194/essd-18-3211-2026</li>
+      <li>Poore, J. &amp; Nemecek, T. (2018). Reducing food’s environmental impacts through producers and consumers. Science 360, 987–992.</li>
+      <li>Geoffroy, O. et al. (2013). Transient climate response in a two-layer energy-balance model. J. Climate 26, 1841–1857.</li>
+      <li>Friedlingstein, P. et al. Global Carbon Budget (annual), Earth System Science Data.</li>
+    </ol>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* =================== i18n =================== */
+let S;
+const tr=(a,b)=>({tr:a,en:b});
+const L=x=>x==null?"":(typeof x==="string"?x:(x[S.lang]??x.tr));
+const T={
+ brandSub:tr("İklim eğitimi simülatörü","Climate education simulator"),
+ lvlO:tr("Ortaokul","Middle school"),lvlL:tr("Lise","High school"),lvlU:tr("Üniversite","University"),
+ heroH:tr("Okulunun iklim hesabını sen yap.","Run your school’s climate numbers yourself."),
+ heroP:tr("Sera gazı envanteri IPCC yöntemleriyle hesaplanır; iklim fiziği, SSP senaryoları ve karbon bütçesi IPCC AR6 verilerine dayanır. Önlemleri dene, 2053 yolunu çiz, eylem planını çıkar.",
+          "The greenhouse gas inventory follows IPCC methods; climate physics, SSP scenarios and the carbon budget use IPCC AR6 data. Test measures, chart the road to 2053 and produce an action plan."),
+ heroTot:tr("Senaryonuzdaki yıllık salım","Annual emissions in your scenario"),
+ heroVs:tr("başlangıca göre","vs. baseline"),
+ less:tr("daha az","lower"),more:tr("daha fazla","higher"),
+ jarE:tr("Salınan CO₂e","Emitted CO₂e"),jarA:tr("Önlemlerle önlenen","Avoided by measures"),
+ perStudent:tr("kg/öğrenci","kg/student"),perYear:tr("t CO₂e/yıl","t CO₂e/yr"),
+ gSchool:tr("Okulumuz","Our school"),gScience:tr("İklim bilimi","Climate science"),gAction:tr("Eylem","Action"),
+ sum100:tr("Toplam %100","Total 100%"),sumBad:tr("Toplam %{n}; 100 olmalı","Total {n}%; must be 100"),normBtn:tr("Toplamı 100’e eşitle","Normalise to 100"),
+ footNote:tr("İklimLab bir eğitim modelidir. Katsayılar uluslararası varsayılan değerlerdir; resmî envanterlerde ulusal katsayılar ve tesise özgü veriler kullanılmalıdır. Kaynaklar:",
+             "İklimLab is an educational model. Factors are international defaults; official inventories should use national factors and site-specific data. Sources:"),
+ print:tr("Planı yazdır","Print plan"),reset:tr("Tüm ayarları sıfırla","Reset all settings"),schoolPh:tr("Okulun adı","School name"),
+ mcRange:tr("Belirsizlik (%90 aralık)","Uncertainty (90% range)"),median:tr("medyan","median"),
+};
+function t(k,vars){let s=L(T[k]);if(vars)for(const v in vars)s=s.replace("{"+v+"}",vars[v]);return s;}
+
+/* =================== Bilimsel sabitler =================== */
+const GWP={ch4f:29.8,ch4b:27.0,n2o:273};                  // AR6 WGI Ch.7, GWP100
+// IPCC 2006 Vol.2 Tablo 1.2/1.4/2.4 (ticari/kurumsal); ncv: GJ/birim; ef: kg/GJ
+const FUELS={
+ gas:{n:tr("Doğal gaz","Natural gas"),u:"m³",ncv:0.0345,co2:56.1,ch4:0.005,n2o:0.0001,eff:0.90},
+ lignite:{n:tr("Linyit (yerli)","Lignite (domestic)"),u:"kg",ncv:0.0120,co2:101.0,ch4:0.010,n2o:0.0015,eff:0.65},
+ coal:{n:tr("İthal taş kömürü","Imported bituminous coal"),u:"kg",ncv:0.0258,co2:94.6,ch4:0.010,n2o:0.0015,eff:0.72},
+ fueloil:{n:tr("Fuel oil","Residual fuel oil"),u:"L",ncv:0.0380,co2:77.4,ch4:0.010,n2o:0.0006,eff:0.85},
+ diesel:{n:tr("Motorin (kalorifer)","Gas/diesel oil"),u:"L",ncv:0.0361,co2:74.1,ch4:0.010,n2o:0.0006,eff:0.87},
+ pellet:{n:tr("Odun peleti","Wood pellets"),u:"kg",ncv:0.0170,co2:0,co2bio:112.0,ch4:0.300,n2o:0.004,eff:0.85,bio:true}
+};
+const efGJ=f=>f.co2+f.ch4*(f.bio?GWP.ch4b:GWP.ch4f)+f.n2o*GWP.n2o;
+const LIGHT_SHARE=0.35,LED_SAVE=0.55,THERMO=0.07,YIELD=1550;
+const INS=[0,.15,.25,.35];
+const INS_N=[tr("Yok","None"),tr("Hafif (çatı)","Light (roof)"),tr("Orta (çatı + pencere)","Medium (roof + windows)"),tr("Kapsamlı (dış cephe dahil)","Deep (incl. façade)")];
+const MODES={walk:tr("Yürüyerek","Walking"),bike:tr("Bisiklet","Cycling"),bus:tr("Halk otobüsü","Public bus"),service:tr("Okul servisi","School shuttle"),car:tr("Benzinli/dizel otomobil","Petrol/diesel car"),ev:tr("Elektrikli otomobil","Electric car")};
+// kg CO2e/km araç; yolcu-km = /doluluk. Yaklaşık değerler (DEFRA 2023 düzeyi)
+const TRF={car:0.165,evKWh:0.18,bus:0.10,service:0.06};
+// Poore & Nemecek 2018 küresel ortalama, kg CO2e/kg ürün
+const FOODS={beef:{n:tr("Sığır eti","Beef"),ef:99.48,p:.12},lamb:{n:tr("Kuzu/koyun eti","Lamb & mutton"),ef:39.72,p:.12},chicken:{n:tr("Tavuk","Poultry"),ef:9.87,p:.12},
+ fish:{n:tr("Çiftlik balığı","Farmed fish"),ef:13.63,p:.12},veg:{n:tr("Yumurta/peynirli vejetaryen","Egg/cheese vegetarian"),ef:4.67,p:.12},legume:{n:tr("Baklagil (nohut, mercimek)","Pulses (chickpea, lentil)"),ef:1.79,p:.08}};
+const SIDE=0.45;
+// IPCC 2006 Vol.5 Ch.2-3: DOC (yaş ağırlık)
+const WASTE={food:{n:tr("Yemek atığı","Food"),doc:.15},paper:{n:tr("Kâğıt/karton","Paper/cardboard"),doc:.40},garden:{n:tr("Bahçe atığı","Garden"),doc:.20},
+ plastic:{n:tr("Plastik","Plastic"),doc:0},glass:{n:tr("Cam/metal","Glass/metal"),doc:0},other:{n:tr("Diğer","Other"),doc:.10}};
+const LANDFILL={managed:{n:tr("Düzenli depolama (yönetilen)","Managed sanitary landfill"),mcf:1.0,ox:.1},deep:{n:tr("Yönetilmeyen, derin (≥5 m)","Unmanaged, deep (≥5 m)"),mcf:.8,ox:0},
+ shallow:{n:tr("Yönetilmeyen, sığ (<5 m)","Unmanaged, shallow (<5 m)"),mcf:.4,ox:0},unknown:{n:tr("Bilinmiyor","Uncategorised"),mcf:.6,ox:0}};
+const COMPOST_EF=0.004*GWP.ch4b+0.0003*GWP.n2o;   // IPCC Tablo 4.1, kg CO2e/kg yaş atık
+const PAPER_EF=0.92,WATER_EF=0.35;
+const PVM=norm([.05,.06,.08,.09,.11,.12,.125,.115,.095,.075,.055,.045]);
+const USEM=norm([1.1,1.1,1,.95,.9,.6,.3,.3,.9,1,1.05,1.1]);
+const MONTHS={tr:["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"],en:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]};
+const CAT={heat:tr("Isınma (Kapsam 1)","Heating (Scope 1)"),elec:tr("Elektrik (Kapsam 2)","Electricity (Scope 2)"),trans:tr("Ulaşım (Kapsam 3)","Commuting (Scope 3)"),
+ food:tr("Yemek (Kapsam 3)","Food (Scope 3)"),waste:tr("Atık (Kapsam 3)","Waste (Scope 3)"),paper:tr("Kâğıt (Kapsam 3)","Paper (Scope 3)"),water:tr("Su (Kapsam 3)","Water (Scope 3)")};
+const UNC={heat:.05,elec:.10,trans:.25,food:.50,waste:.50,paper:.25,water:.30}; // ±%95 güven
+// AR6 WGI SPM Tablo SPM.1 (1850–1900'e göre °C) ve deniz seviyesi 2100 (1995–2014'e göre, m)
+const SSP=[
+ {id:"SSP1-1.9",near:[1.5,1.2,1.7],mid:[1.6,1.2,2.0],long:[1.4,1.0,1.8],slr:[.28,.55],ppm:393},
+ {id:"SSP1-2.6",near:[1.5,1.2,1.8],mid:[1.7,1.3,2.2],long:[1.8,1.3,2.4],slr:[.32,.62],ppm:446},
+ {id:"SSP2-4.5",near:[1.5,1.2,1.8],mid:[2.0,1.6,2.5],long:[2.7,2.1,3.5],slr:[.44,.76],ppm:603},
+ {id:"SSP3-7.0",near:[1.5,1.2,1.8],mid:[2.1,1.7,2.6],long:[3.6,2.8,4.6],slr:[.55,.90],ppm:867},
+ {id:"SSP5-8.5",near:[1.6,1.3,1.9],mid:[2.4,1.9,3.0],long:[4.4,3.3,5.7],slr:[.63,1.01],ppm:1135}];
+// AR6 WGI Şekil SPM.6, küresel ısınma düzeyleri 1, 1.5, 2, 4 °C
+const WLS=[1,1.5,2,4];
+const EXT=[
+ {n:tr("10 yılda bir görülen sıcak hava olayı","10-year hot temperature extreme"),f:[2.8,4.1,5.6,9.4],i:[1.2,1.9,2.6,5.1],iu:"°C"},
+ {n:tr("50 yılda bir görülen sıcak hava olayı","50-year hot temperature extreme"),f:[4.8,8.6,13.9,39.2],i:[1.2,2.0,2.7,5.3],iu:"°C"},
+ {n:tr("10 yılda bir görülen şiddetli yağış","10-year heavy 1-day precipitation"),f:[1.3,1.5,1.7,2.7],i:[6.7,10.5,14.0,30.2],iu:"%"},
+ {n:tr("10 yılda bir görülen tarımsal kuraklık (kuruyan bölgeler)","10-year agricultural drought (drying regions)"),f:[1.7,2.0,2.4,4.1],i:[.3,.5,.6,1.0],iu:"sd"}];
+// AR6 WGI Tablo SPM.2: 1 Ocak 2020'den itibaren kalan bütçe (GtCO2)
+const BUDGET={"1.5":{17:900,33:650,50:500,67:400,83:300},"1.7":{17:1450,33:1050,50:850,67:700,83:550},"2.0":{17:2300,33:1700,50:1350,67:1150,83:900}};
+// AR6 SYR: 2019'a göre küresel sera gazı azaltımı (medyan)
+const REF={p15:{2019:0,2030:.43,2035:.60,2040:.69,2050:.84},p20:{2019:0,2030:.21,2035:.35,2040:.46,2050:.64}};
+const F2X=3.93, C0=278;                                   // AR6: 2xCO2 ERF, 1750 CO2 (ppm)
+const EBM={C:7.3,Cd:106,g:0.73};                          // Geoffroy et al. 2013, CMIP5 ortalaması
+
+const HAZ={
+ heat:{n:tr("Sıcak hava dalgası","Heatwaves"),acts:[["shade",tr("Bahçeye gölge ağaçları ve gölgelik","Shade trees and canopies"),"v"],["roof",tr("Serin (açık renkli) çatı ve yalıtım","Cool roof and insulation"),"v"],["plan",tr("Sıcak hava eylem planı ve su istasyonları","Heat action plan and water stations"),"v"]]},
+ drought:{n:tr("Kuraklık ve su kıtlığı","Drought and water scarcity"),acts:[["rain",tr("Yağmur suyu hasadı","Rainwater harvesting"),"v"],["xeri",tr("Az su isteyen peyzaj","Drought-tolerant landscaping"),"e"],["meter",tr("Su sayaçları ve kaçak takibi","Water metering and leak checks"),"v"]]},
+ flood:{n:tr("Ani sel ve taşkın","Flash floods"),acts:[["perm",tr("Geçirgen zemin ve yağmur bahçesi","Permeable paving and rain gardens"),"e"],["drain",tr("Drenaj ve oluk bakımı","Drainage and gutter maintenance"),"e"],["evac",tr("Erken uyarı ve tahliye planı","Early warning and evacuation plan"),"v"]]},
+ fire:{n:tr("Orman ve arazi yangını","Wildfire"),acts:[["buffer",tr("Yanıcı bitki örtüsünden arındırılmış tampon alan","Defensible space around buildings"),"e"],["drill",tr("Yangın ve duman tatbikatı","Fire and smoke drills"),"v"],["filter",tr("Hava filtreleri (duman günleri)","Air filtration for smoke days"),"v"]]},
+ storm:{n:tr("Fırtına ve dolu","Storms and hail"),acts:[["anchor",tr("Çatı ve panellerin sabitlenmesi","Anchor roofs and panels"),"v"],["trees",tr("Riskli ağaçların bakımı","Maintain hazardous trees"),"e"],["alert",tr("Meteorolojik uyarı takibi","Weather alert protocol"),"v"]]}};
+
+/* =================== Durum =================== */
+const DEF={lang:"tr",lvl:"o",tab:"inv",school:"",
+ students:600,staff:45,staffDist:8,staffCarShare:1.5,days:180,elec:180000,grid:0.44,fuel:"gas",fuelQty:45000,dist:4,occ:1.5,
+ mode:{walk:30,bike:5,bus:20,service:20,car:24,ev:1},
+ meals:400,mix:{beef:5,lamb:5,chicken:35,fish:5,veg:25,legume:25},plate:20,
+ waste:18,comp:{food:40,paper:25,garden:10,plastic:12,glass:6,other:7},landfill:"managed",landfillAge:12,recov:0,
+ recBase:{paper:10,plastic:10,glass:10},paper:3,water:6000,
+ m:{led:0,standby:false,ins:0,thermo:0,fuel:"gas",hp:0,scop:3,pv:0,pvCost:28000,elecPrice:4.5,fuelPrice:9,baseFuelPrice:9,pvMode:"monthly",exportCredit:0,
+    mode:{walk:30,bike:5,bus:20,service:20,car:24,ev:1},occ:1.5,mix:{beef:5,lamb:5,chicken:35,fish:5,veg:25,legume:25},plate:20,
+    rec:{paper:10,plastic:10,glass:10},compost:0,recov:0,paperCut:0,start:2027,ramp:3,gridDecline:3},
+ phys:{ppm:420,ecs:3.0},ssp:{period:"long",wl:1.5},bud:{target:"1.5",prob:"50",since:0,rate:42.2,pop:8.2},
+ risk:{wl:1.5,heat:{h:4,e:4,v:3},drought:{h:4,e:3,v:3},flood:{h:2,e:3,v:3},fire:{h:3,e:2,v:3},storm:{h:2,e:3,v:2},acts:{}}};
+// GCB 2025, remaining budgets at start of 2026, 50% likelihood (GtCO2).
+const GCB2026={"1.5":170,"1.7":525,"2.0":1055};
+const KEY="iklimlab-v3";
+S=load();
+function load(){try{const r=localStorage.getItem(KEY);if(r)return merge(clone(DEF),JSON.parse(r));}catch(e){}return clone(DEF);}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function merge(a,b){for(const k in b){if(k==="acts"){a[k]=b[k];continue;}if(b[k]&&typeof b[k]==="object"&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==="object")merge(a[k],b[k]);else if(k in a)a[k]=b[k];}return a;}
+const get=p=>p.split(".").reduce((o,k)=>o?.[k],S);
+function set(p,v){const ks=p.split(".");const l=ks.pop();ks.reduce((o,k)=>o[k],S)[l]=v;}
+function norm(a){const s=a.reduce((x,y)=>x+y,0);return a.map(v=>v/s);}
+const $=s=>document.querySelector(s);
+const nf=(v,d=0)=>(+v).toLocaleString(S.lang==="tr"?"tr-TR":"en-GB",{minimumFractionDigits:d,maximumFractionDigits:d});
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function interp(xs,ys,x){if(x<=xs[0])return ys[0];for(let i=1;i<xs.length;i++)if(x<=xs[i]){const r=(x-xs[i-1])/(xs[i]-xs[i-1]);return ys[i-1]+r*(ys[i]-ys[i-1]);}return ys[ys.length-1];}
+
+/* =================== Envanter motoru =================== */
+function baseM(){return {led:0,standby:false,ins:0,thermo:0,fuel:S.fuel,hp:0,scop:S.m.scop,pv:0,mode:S.mode,occ:S.occ,mix:S.mix,plate:S.plate,rec:S.recBase,compost:0,recov:S.recov,paperCut:0};}
+function heat(m){
+  const fb=FUELS[S.fuel],fn=FUELS[m.fuel];
+  const useful0=S.fuelQty*fb.ncv*fb.eff;                         // GJ yararlı ısı
+  const useful=useful0*(1-INS[m.ins])*(1-THERMO*m.thermo);
+  const hpU=useful*m.hp/100,fuelGJ=(useful-hpU)/fn.eff;
+  return {useful0,useful,fuelGJ,fuelQty:fuelGJ/fn.ncv,hpKWh:hpU*277.78/m.scop,t:fuelGJ*efGJ(fn)/1000,bio:fuelGJ*(fn.co2bio||0)/1000};
+}
+function trEF(k,m,g){return k==="car"?TRF.car/m.occ:k==="ev"?TRF.evKWh*g/m.occ:k==="bus"?TRF.bus:k==="service"?TRF.service:0;}
+function mealEF(k){return FOODS[k].ef*FOODS[k].p+SIDE;}
+// Annual average electricity balance; monthly settlement caps avoided imports at monthly load.
+function solarBalance(useKWh,capacity,mode="monthly"){
+ const generation=capacity*YIELD,prod=PVM.map(v=>v*generation),use=USEM.map(v=>v*useKWh);
+ const self=prod.reduce((a,v,i)=>a+Math.min(v,use[i]),0);
+ const offset=mode==="annual"?Math.min(generation,useKWh):self;
+ return {generation,prod,use,self,offset,exports:Math.max(0,generation-self),paidExports:Math.max(0,generation-offset),grid:Math.max(0,useKWh-offset)};
+}
+// IPCC 2006 FOD (stationary historical disposal approximation): a constant annual waste stream
+// over landfillAge years; k values illustrative climate-dependent decay coefficients.
+const DECAY={food:.185,paper:.060,garden:.100,other:.050};
+function landfillMethane(streamByType,lf,age){
+ let methane=0;for(const k of Object.keys(streamByType)){
+  const kdec=DECAY[k]||.06,annual=streamByType[k];
+  // Steady historical disposal, summing the exponential decay of annual cohorts.
+  const decayFraction=1-Math.exp(-kdec*Math.max(1,age));
+  methane+=annual*WASTE[k].doc*.5*lf.mcf*.5*(16/12)*decayFraction;
+ }
+ return methane;
+}
+function calc(m,f,gOverride){
+  f=f||{};const g=gOverride??S.grid,F=k=>f[k]??1;
+  const h=heat(m);
+  const elecUse=S.elec*(1-LIGHT_SHARE*LED_SAVE*m.led/100)*(m.standby?0.95:1)+h.hpKWh;
+  const pv=solarBalance(elecUse,m.pv,m.pvMode||S.m.pvMode),pvGen=pv.generation,gridE=pv.grid;
+  const pkm=S.students*S.days*2*S.dist,tr={};let trT=0;
+  for(const k in MODES){tr[k]=pkm*(m.mode[k]||0)/100*trEF(k,m,g)/1000*F("trans");trT+=tr[k];}
+  const staffPkm=S.staff*S.days*2*S.staffDist;
+  const staffTrans=staffPkm*TRF.car/Math.max(1,S.staffCarShare)/1000*F("trans");
+  trT+=staffTrans;
+  let mealAvg=0;for(const k in FOODS)mealAvg+=(m.mix[k]||0)/100*mealEF(k);
+  const food=S.meals*S.days*mealAvg/(1-m.plate/100)/1000*F("food");
+  const W=S.waste*1000,LF=LANDFILL[S.landfill];let ch4=0,land=0,recy=0,comp=0,streams={};
+  for(const k in WASTE){const w=W*S.comp[k]/100;let r=0,c=0;
+    if(k in m.rec)r=m.rec[k]/100; if(k==="food"||k==="garden")c=m.compost/100;
+    const lf=Math.max(0,w*(1-r-c));land+=lf;recy+=w*r;comp+=w*c;
+    streams[k]=lf;}
+  ch4=landfillMethane(streams,LF,S.landfillAge)*(1-m.recov/100)*(1-LF.ox);
+  const waste=(ch4*GWP.ch4b+comp*COMPOST_EF)/1000*F("waste");
+  const out={heat:h.t*F("heat"),elec:gridE*g/1000*F("elec"),trans:trT,food,waste,
+    paper:S.paper*(1-m.paperCut/100)*PAPER_EF*F("paper"),water:S.water*WATER_EF/1000*F("water")};
+  out.total=Object.values(out).reduce((a,b)=>a+b,0);
+  return Object.assign(out,{h,elecUse,pvGen,gridE,pv,pkm,staffPkm,staffTrans,tr,mealAvg,ch4,land,recy,comp});
+}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function monte(m,n){const r=[];for(let i=0;i<n;i++){const f={};for(const k in UNC){
+  // Lognormal factors preserve positivity and make the quoted spread multiplicative.
+  const sigma=Math.log(1+UNC[k])/1.645;
+  f[k]=Math.exp(gauss()*sigma-sigma*sigma/2);
+ }r.push(calc(m,f).total);}
+  r.sort((a,b)=>a-b);return {p5:r[n*.05|0],p50:r[n*.5|0],p95:r[n*.95|0]};}
+
+/* =================== Kontrol tanımları =================== */
+const P=tr; // kısaltma
+const FMT={pct:v=>"%"+nf(v),pctE:v=>nf(v)+"%",km:v=>nf(v,1)+" km",kwp:v=>nf(v)+" kWp",deg:v=>(+v?"−"+v+" °C":L(P("değişmedi","unchanged"))),
+ ins:v=>L(INS_N[+v]),yr:v=>String(v),yrs:v=>v+" "+L(P("yıl","yr")),tl:v=>nf(v)+" TL",tlk:v=>nf(v,2)+" TL",x1:v=>nf(v,1),x2:v=>nf(v,2),ppm:v=>nf(v)+" ppm",
+ ecs:v=>nf(v,1)+" °C",gt:v=>nf(v)+" Gt",wl:v=>"+"+nf(v,1)+" °C",occ:v=>nf(v,1)+" "+L(P("kişi","pers.")),bn:v=>nf(v,1)+" "+L(P("milyar","bn")),r15:v=>v};
+const pf=v=>typeof v==="string"?(S.lang==="tr"?"%"+v:v+"%"):(S.lang==="tr"?FMT.pct(v):FMT.pctE(v));
+FMT.p=pf;
+function rng(k,l,min,max,step,f,h){return {k,t:"range",l,min,max,step,f,h};}
+function num(k,l,step,h){return {k,t:"num",l,step,h};}
+function chk(k,l){return {k,t:"check",l};}
+function sel(k,l,opts,h){return {k,t:"select",l,opts,h};}
+const head=l=>({t:"head",l});
+const html=fn=>({t:"html",fn});
+const fuelOpts=()=>Object.keys(FUELS).map(k=>[k,FUELS[k].n]);
+
+const PANELS=[
+ {id:"inv",g:"gSchool",tab:P("Envanter","Inventory"),title:P("Okulun sera gazı envanteri","School greenhouse gas inventory"),
+  intro:P("Son 12 ayın faaliyet verilerini gir: faturalar, servis listeleri, yemekhane ve atık kayıtları.","Enter activity data for the last 12 months: bills, shuttle lists, canteen and waste records."),
+  ctrls:()=>[num("students",P("Öğrenci sayısı","Number of students"),10),num("staff",P("Öğretmen/personel sayısı","Staff members"),1),num("days",P("Yıllık okul günü","School days per year"),1),
+   head(P("Enerji","Energy")),num("elec",P("Yıllık elektrik (kWh)","Electricity per year (kWh)"),1000),
+   rng("grid",P("Şebeke emisyon faktörü","Grid emission factor"),0.05,0.8,0.01,"x2",P("kg CO₂/kWh. Türkiye şebekesi için yaklaşık 0,44; güncel ulusal değeri girin.","kg CO₂/kWh. About 0.44 for Türkiye; enter the current national value.")),
+   sel("fuel",P("Isınma yakıtı","Heating fuel"),fuelOpts),num("fuelQty",P("Yıllık yakıt miktarı","Fuel per year"),100,()=>FUELS[S.fuel].u),
+   head(P("Ulaşım","Commuting")),rng("dist",P("Ortalama ev–okul mesafesi","Average home–school distance"),.5,25,.5,"km"),
+   rng("staffDist",P("Personel ev–okul mesafesi","Staff one-way commute"),.5,40,.5,"km"),rng("staffCarShare",P("Personel araç doluluğu","Staff car occupancy"),1,4,.1,"occ"),rng("occ",P("Otomobil doluluğu","Car occupancy"),1,4,.1,"occ"),html(()=>modeGrid("mode")),
+   head(P("Yemekhane","Canteen")),num("meals",P("Günlük öğle yemeği sayısı","Lunches served per day"),10),html(()=>mixGrid("mix")),
+   rng("plate",P("Tabak artığı","Plate waste"),0,50,1,"p"),
+   head(P("Atık, kâğıt, su","Waste, paper, water")),num("waste",P("Yıllık atık (ton)","Waste per year (t)"),.5),
+   html(()=>compGrid()),sel("landfill",P("Atığın gittiği yer","Disposal site"),()=>Object.keys(LANDFILL).map(k=>[k,LANDFILL[k].n])),
+   rng("landfillAge",P("Geçmiş depolama süresi (FOD varsayımı)","Historical disposal duration (FOD assumption)"),1,50,1,"yr"),rng("recov",P("Depo gazı toplama oranı","Landfill gas recovery"),0,80,5,"p"),
+   rng("recBase.paper",P("Bugünkü kâğıt geri dönüşümü","Current paper recycling"),0,90,1,"p"),
+   rng("recBase.plastic",P("Bugünkü plastik geri dönüşümü","Current plastic recycling"),0,90,1,"p"),
+   rng("recBase.glass",P("Bugünkü cam/metal geri dönüşümü","Current glass/metal recycling"),0,90,1,"p"),
+   num("paper",P("Yıllık kâğıt (ton)","Paper per year (t)"),.1),num("water",P("Yıllık su (m³)","Water per year (m³)"),100)],
+  charts:[["c-inv",P("Salım kaynakları (başlangıç)","Emission sources (baseline)")],["c-scope",P("Kapsamlara göre (t CO₂e)","By scope (t CO₂e)")]]},
+ {id:"energy",g:"gSchool",tab:P("Enerji ve ısınma","Energy & heating"),title:P("Enerji verimliliği ve ısınma","Energy efficiency & heating"),
+  intro:P("Talebi azalt, sonra temiz kaynağa geç: önce verimlilik, sonra elektrifikasyon.","Cut demand first, then switch to clean sources: efficiency, then electrification."),
+  ctrls:()=>[rng("m.led",P("LED’e dönüştürülen aydınlatma","Lighting converted to LED"),0,100,5,"p",P("Aydınlatma okul elektriğinin ≈%35’i; LED ≈%55 tasarruf.","Lighting ≈35% of school electricity; LED saves ≈55%.")),
+   chk("m.standby",P("Akşam bekleme modundaki cihazları kapat (≈%5)","Switch off standby loads at night (≈5%)")),
+   rng("m.ins",P("Bina yalıtımı","Building insulation"),0,3,1,"ins"),
+   rng("m.thermo",P("Termostatı düşür","Lower thermostat"),0,3,1,"deg",P("Her 1 °C yaklaşık %7 (literatürde %5–10).","About 7% per °C (literature: 5–10%).")),
+   sel("m.fuel",P("Hedef ısınma yakıtı","Target heating fuel"),fuelOpts),
+   rng("m.hp",P("Isı pompasıyla karşılanan ısı","Heat supplied by heat pump"),0,100,5,"p"),
+   rng("m.scop",P("Isı pompası mevsimsel verimi (SCOP)","Heat pump seasonal COP"),2,5,.1,"x1"),
+   rng("m.elecPrice",P("Elektrik birim fiyatı (TL/kWh)","Electricity price (TL/kWh)"),1,10,.1,"tlk"),
+   rng("m.baseFuelPrice",P("Başlangıç yakıt fiyatı (TL/birim)","Baseline fuel price (TL/unit)"),1,40,.5,"tlk"),rng("m.fuelPrice",P("Hedef yakıt fiyatı (TL/birim)","Target fuel price (TL/unit)"),1,40,.5,"tlk")],
+  charts:[["c-energy",P("Önce ve sonra","Before and after")]]},
+ {id:"solar",g:"gSchool",tab:P("Güneş","Solar"),title:P("Çatı güneş santrali","Rooftop solar"),
+  intro:P("Panel gücünü seç; üretimin okul takvimiyle nasıl örtüştüğünü gör.","Choose the array size and see how output matches the school calendar."),
+  ctrls:()=>[rng("m.pv",P("Kurulu güç","Installed capacity"),0,300,5,"kwp",P("1 kWp ≈ 5,5 m² çatı. Özgül üretim ≈1550 kWh/kWp·yıl (Burdur).","1 kWp ≈ 5.5 m² roof. Specific yield ≈1550 kWh/kWp·yr (Burdur).")),
+   rng("m.pvCost",P("Kurulum maliyeti (TL/kWp)","Installed cost (TL/kWp)"),15000,50000,1000,"tl"),
+    sel("m.pvMode",P("Elektrik mahsuplaşma varsayımı","PV settlement assumption"),()=>[["monthly",P("Aylık öz tüketim (temkinli)","Monthly self-consumption (conservative)")],["annual",P("Yıllık net mahsuplaşma (varsayımsal)","Annual netting (hypothetical)")]]),
+    rng("m.exportCredit",P("Şebekeye satış fiyatı (TL/kWh)","Export credit (TL/kWh)"),0,5,.1,"tlk")],
+  charts:[["c-solar",P("Aylık üretim ve tüketim (MWh)","Monthly generation and demand (MWh)")]]},
+ {id:"trans",g:"gSchool",tab:P("Ulaşım","Transport"),title:P("Okula ulaşım","School commuting"),
+  intro:P("Hedef ulaşım dağılımını ayarla (toplam %100).","Set the target modal split (total 100%)."),
+  ctrls:()=>[html(()=>modeGrid("m.mode")),rng("m.occ",P("Otomobil doluluğu (araç paylaşımı)","Car occupancy (car-sharing)"),1,4,.1,"occ")],
+  charts:[["c-trans",P("Ulaşım türüne göre yıllık salım (t CO₂e)","Annual emissions by mode (t CO₂e)")]]},
+ {id:"food",g:"gSchool",tab:P("Yemekhane","Canteen"),title:P("Yemekhane ve beslenme","Canteen & diet"),
+  intro:P("Menüdeki öğün türlerinin payını değiştir. IPCC SRCCL, bitki ağırlıklı beslenmeyi önemli bir azaltım seçeneği olarak değerlendirir.","Change the share of meal types. IPCC SRCCL identifies plant-rich diets as a major mitigation option."),
+  ctrls:()=>[html(()=>mixGrid("m.mix")),rng("m.plate",P("Tabak artığı hedefi","Plate waste target"),0,50,1,"p")],
+  charts:[["c-food",P("Öğün başına salım (kg CO₂e)","Emissions per meal (kg CO₂e)")]]},
+ {id:"waste",g:"gSchool",tab:P("Sıfır atık","Zero waste"),title:P("Sıfır atık","Zero waste"),
+  intro:P("Depolama alanında bozunan organik atık metan üretir. Hesap IPCC 2006 atık yöntemine dayanır.","Organic waste decaying in landfills produces methane. Calculated with the IPCC 2006 waste method."),
+  ctrls:()=>[rng("m.rec.paper",P("Kâğıt geri dönüşüm hedefi","Paper recycling target"),0,95,1,"p"),rng("m.rec.plastic",P("Plastik geri dönüşüm hedefi","Plastic recycling target"),0,95,1,"p"),
+   rng("m.rec.glass",P("Cam/metal geri dönüşüm hedefi","Glass/metal recycling target"),0,95,1,"p"),
+   rng("m.compost",P("Kompostlanan yemek ve bahçe atığı","Food and garden waste composted"),0,100,5,"p"),
+   rng("m.recov",P("Depo gazı toplama (belediye ile)","Landfill gas recovery (with municipality)"),0,80,5,"p"),
+   rng("m.paperCut",P("Kâğıt tüketimini azalt","Reduce paper use"),0,80,5,"p")],
+  charts:[["c-waste",P("Atık akışı (ton/yıl)","Waste flows (t/yr)")]]},
+ {id:"phys",g:"gScience",tab:P("İklim fiziği","Climate physics"),title:P("Sera etkisi laboratuvarı","Greenhouse effect lab"),
+  intro:P("Atmosferdeki CO₂’yi değiştir; ışınımsal zorlamayı ve iki katmanlı enerji dengesi modeliyle sıcaklık tepkisini izle.","Change atmospheric CO₂ and watch radiative forcing and the temperature response in a two-layer energy-balance model."),
+  ctrls:()=>[rng("phys.ppm",P("CO₂ derişimi","CO₂ concentration"),200,1200,5,"ppm",P("1750: 278 ppm. 2023 küresel ortalama ≈419 ppm.","1750: 278 ppm. 2023 global mean ≈419 ppm.")),
+   rng("phys.ecs",P("Denge iklim duyarlılığı (ECS)","Equilibrium climate sensitivity (ECS)"),1.5,6,.1,"ecs",P("AR6 en iyi tahmin 3 °C; olası aralık 2,5–4 °C; çok olası 2–5 °C.","AR6 best estimate 3 °C; likely 2.5–4 °C; very likely 2–5 °C.")),
+   html(()=>`<div class="row" style="margin-top:8px">${[278,419,560,1112].map(v=>`<button class="btn ghost" data-ppm="${v}">${v} ppm</button>`).join("")}</div>`)],
+  charts:[["c-phys",P("Ani CO₂ değişimine sıcaklık tepkisi (°C)","Temperature response to an abrupt CO₂ change (°C)"),"tall"]]},
+ {id:"ssp",g:"gScience",tab:P("SSP senaryoları","SSP scenarios"),title:P("IPCC AR6 senaryoları","IPCC AR6 scenarios"),
+  intro:P("Beş ortak sosyoekonomik yol (SSP) için öngörülen küresel ısınma ve deniz seviyesi. Isınma düzeyi kaydırıcısıyla aşırı olayların nasıl değiştiğini keşfet.","Projected warming and sea level for five Shared Socioeconomic Pathways. Use the warming-level slider to explore changes in extremes."),
+  ctrls:()=>[sel("ssp.period",P("Dönem","Period"),()=>[["near",P("Yakın vade (2021–2040)","Near term (2021–2040)")],["mid",P("Orta vade (2041–2060)","Mid term (2041–2060)")],["long",P("Uzun vade (2081–2100)","Long term (2081–2100)")]]),
+   rng("ssp.wl",P("Küresel ısınma düzeyi","Global warming level"),1,4,.1,"wl",P("1850–1900’e göre. 2011–2020 gözlenen: 1,09 °C.","Relative to 1850–1900. Observed 2011–2020: 1.09 °C."))],
+  charts:[["c-ssp",P("Küresel yüzey sıcaklığı artışı (°C, çok olası aralık)","Global surface warming (°C, very likely range)")],["c-ext",P("Aşırı olayların sıklığı (sanayi öncesine göre kat)","Frequency of extremes (× pre-industrial)")]]},
+ {id:"budget",g:"gScience",tab:P("Karbon bütçesi","Carbon budget"),title:P("Kalan karbon bütçesi","Remaining carbon budget"),
+  intro:P("Isınma, toplam CO₂ salımıyla neredeyse doğrusal artar (TCRE). Bir sıcaklık hedefi için atmosfere salınabilecek CO₂ sınırlıdır.","Warming rises almost linearly with cumulative CO₂ (TCRE). Any temperature limit implies a finite CO₂ budget."),
+  ctrls:()=>[sel("bud.target",P("Sıcaklık hedefi","Temperature limit"),()=>[["1.5","1,5 °C"],["1.7","1,7 °C"],["2.0","2,0 °C"]].map(a=>[a[0],S.lang==="tr"?a[1]:a[1].replace(",",".")])),
+   html(()=>`<p class="hint">${L(P("GCB 2025: 1 Ocak 2026 itibarıyla %50 olasılık; farklı olasılıklar için doğrudan eşdeğer değer verilmemiştir.","GCB 2025: 50% likelihood as of 1 January 2026; no directly comparable values for other likelihoods here."))}</p>`),
+   
+   rng("bud.rate",P("Bugünkü yıllık küresel CO₂ salımı","Current annual global CO₂ emissions"),10,50,1,"gt"),
+   rng("bud.pop",P("Dünya nüfusu","World population"),7.5,10,.1,"bn")],
+  charts:[["c-bud",P("Küresel CO₂ salımı (Gt/yıl): sabit devam ve bütçeyi tüketen doğrusal azalma","Global CO₂ (Gt/yr): constant vs. linear decline exhausting the budget")]]},
+ {id:"adapt",g:"gAction",tab:P("Uyum ve risk","Adaptation & risk"),title:P("İklim riski ve uyum","Climate risk & adaptation"),
+  intro:P("IPCC’ye göre risk; tehlike, maruziyet ve kırılganlığın birleşimidir. Okulunu puanla, ısınma düzeyini değiştir, uyum önlemlerini seç.","In IPCC terms, risk combines hazard, exposure and vulnerability. Score your school, change the warming level, choose adaptation actions."),
+  ctrls:()=>[rng("risk.wl",P("Küresel ısınma düzeyi","Global warming level"),1.1,4,.1,"wl",P("Tehlike puanı, AR6 SPM.6’daki sıklık artışıyla ölçeklenir (gösterim amaçlı indeks).","Hazard scores scale with the frequency increase in AR6 SPM.6 (illustrative index).")),
+   html(()=>riskInputs())],
+  charts:[["c-risk",P("Risk indeksi: önlemsiz ve önlemlerle (1–125)","Risk index: without and with actions (1–125)")]]},
+ {id:"path",g:"gAction",tab:P("2053 yolu","Path to 2053"),title:P("Net sıfıra giden yol","The road to net zero"),
+  intro:P("Önlemlerin takvimini seç. Kesikli çizgiler, IPCC AR6 Sentez Raporu’ndaki küresel azaltım hızlarını okulunun başlangıç salımına uygular.","Set the timing. Dotted lines apply the global reduction rates of the IPCC AR6 Synthesis Report to your school’s baseline."),
+  ctrls:()=>[rng("m.start",P("Önlemlerin başladığı yıl","Start year of measures"),2026,2035,1,"yr"),rng("m.ramp",P("Tamamlanma süresi","Implementation period"),1,10,1,"yrs"),
+   rng("m.gridDecline",P("Şebekenin yıllık temizlenme hızı","Annual grid decarbonisation"),0,8,.5,"p")],
+  charts:[["c-path",P("Yıllık salım (t CO₂e)","Annual emissions (t CO₂e)"),"tall"]]},
+ {id:"plan",g:"gAction",tab:P("Eylem planı","Action plan"),wide:true},
+ {id:"learn",g:"gAction",tab:P("Sınav ve sözlük","Quiz & glossary"),wide:true}
+];
+
+/* =================== Kontrol üretimi =================== */
+function modeGrid(base){return `<div class="mode-grid">${Object.keys(MODES).map(k=>ctrlHTML(rng(base+"."+k,MODES[k],0,100,1,"p"))).join("")}</div><div id="sum-${base.replace(".","_")}"></div>
+ <button class="btn ghost" data-normal="${base}" style="margin-top:6px">${t("normBtn")}</button>`;}
+function mixGrid(base){return `<div class="mode-grid">${Object.keys(FOODS).map(k=>ctrlHTML(rng(base+"."+k,FOODS[k].n,0,100,1,"p"))).join("")}</div><div id="sum-${base.replace(".","_")}"></div>
+ <button class="btn ghost" data-normal="${base}" style="margin-top:6px">${t("normBtn")}</button>`;}
+function compGrid(){return `<div class="hint" style="margin-top:8px">${L(P("Atık bileşimi (%)","Waste composition (%)"))}</div><div class="mode-grid">${Object.keys(WASTE).map(k=>ctrlHTML(rng("comp."+k,WASTE[k].n,0,100,1,"p"))).join("")}</div><div id="sum-comp"></div>
+ <button class="btn ghost" data-normal="comp" style="margin-top:6px">${t("normBtn")}</button>`;}
+function riskInputs(){return Object.keys(HAZ).map(k=>`<h4>${L(HAZ[k].n)}</h4><div class="mode-grid" style="grid-template-columns:1fr 1fr 1fr">${
+  ["h","e","v"].map(d=>ctrlHTML(rng(`risk.${k}.${d}`,{h:P("Tehlike","Hazard"),e:P("Maruziyet","Exposure"),v:P("Kırılganlık","Vulnerab.")}[d],1,5,1,"r15"))).join("")}</div>${
+  HAZ[k].acts.map(a=>`<label class="check"><input type="checkbox" data-act="${k}.${a[0]}"> ${L(a[1])}</label>`).join("")}`).join("");}
+function ctrlHTML(c){
+  if(c.t==="head")return `<h4>${L(c.l)}</h4>`;
+  if(c.t==="html")return c.fn();
+  const id="i-"+c.k.replace(/\./g,"_");
+  const h=c.h?`<div class="hint">${typeof c.h==="function"?c.h():L(c.h)}</div>`:"";
+  if(c.t==="head")return `<h4>${L(c.l)}</h4>`;
+  if(c.t==="html")return c.fn();
+  if(c.t==="range")return `<div class="field"><label for="${id}">${L(c.l)}<output id="o${id}"></output></label><input type="range" id="${id}" data-p="${c.k}" data-f="${c.f}" min="${c.min}" max="${c.max}" step="${c.step}">${h}</div>`;
+  if(c.t==="num")return `<div class="field"><label for="${id}">${L(c.l)}</label><input type="number" id="${id}" data-p="${c.k}" min="0" step="${c.step}">${h}</div>`;
+  if(c.t==="check")return `<label class="check"><input type="checkbox" id="${id}" data-p="${c.k}"> ${L(c.l)}</label>`;
+  if(c.t==="select")return `<div class="field"><label for="${id}">${L(c.l)}</label><select id="${id}" data-p="${c.k}">${c.opts().map(o=>`<option value="${o[0]}">${L(o[1])}</option>`).join("")}</select>${h}</div>`;
+}
+
+/* =================== Paneller =================== */
+function buildPanels(){
+  let nav="",lastG="";
+  PANELS.forEach(p=>{if(p.g!==lastG){nav+=`<span class="grp">${t(p.g)}</span>`;lastG=p.g;}nav+=`<button role="tab" data-tab="${p.id}">${L(p.tab)}</button>`;});
+  $("#tabs").innerHTML=nav;
+  $("#panels").innerHTML=PANELS.map(p=>{
+    if(p.id==="plan")return `<section class="panel wide" id="p-plan"><div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <div><h2 style="font-size:26px">${L(P("Okul iklim eylem planı","School climate action plan"))}</h2><div class="sub">${L(P("Azaltım ve uyum önlemlerinden otomatik oluşturulur.","Generated from your mitigation and adaptation choices."))}</div></div>
+      <div class="row no-print"><input type="text" id="schoolName" placeholder="${t("schoolPh")}" style="width:220px;margin:0"><button class="btn" id="printBtn">${t("print")}</button><button class="btn ghost" id="resetBtn">${t("reset")}</button></div></div>
+      <div class="stats" id="st-plan" style="margin:12px 0 16px"></div>
+      <h3>${L(P("Azaltım","Mitigation"))}</h3><div class="scroll"><table class="t" id="tbl-mit"></table></div>
+      <h3 style="margin-top:20px">${L(P("Uyum","Adaptation"))}</h3><div class="scroll"><table class="t" id="tbl-ad"></table></div></div></section>`;
+    if(p.id==="learn")return `<section class="panel wide" id="p-learn"><div class="card" style="margin-bottom:18px"><h3>${L(P("Kendini dene","Test yourself"))}</h3><div id="quiz"></div></div>
+      <div class="card"><h3>${L(P("IPCC sözlüğünden temel kavramlar","Key terms from the IPCC glossary"))}</h3><dl class="gloss" id="gloss"></dl></div></section>`;
+    return `<section class="panel" id="p-${p.id}" role="tabpanel"><div class="controls"><h2>${L(p.title)}</h2><p>${L(p.intro)}</p>${p.ctrls().map(ctrlHTML).join("")}</div>
+     <div class="results"><div class="card motion-card" id="motion-${p.id}"><div class="motion-top"><h3 class="motion-title"></h3><button class="btn ghost motion-toggle" type="button"></button></div><p class="motion-note"></p><div class="motion-display"></div></div>${p.charts.map(c=>`<div class="card"><h3>${L(c[1])}</h3><canvas class="chart ${c[2]||""}" id="${c[0]}"></canvas></div>`).join("")}
+     ${p.id==="ssp"?`<div class="card"><div class="scroll"><table class="t" id="tbl-ext"></table></div></div>`:""}
+     <div class="card"><div class="stats" id="st-${p.id}"></div></div><div class="explain" id="ex-${p.id}"></div></div></section>`;
+  }).join("");
+  wire();
+}
+function wire(){
+  document.querySelectorAll("[data-p]").forEach(el=>{sync(el);
+    el.addEventListener(el.tagName==="SELECT"?"change":"input",()=>{
+      let v=el.type==="checkbox"?el.checked:el.tagName==="SELECT"?el.value:parseFloat(el.value);
+      if(typeof v==="number"&&Number.isNaN(v))v=0;
+      const p=el.dataset.p;set(p,v);out(el);
+      if(p==="fuel"){S.m.fuel=v;syncPath("m.fuel");$("#i-fuelQty")?.parentElement.querySelector(".hint")&&( $("#i-fuelQty").parentElement.querySelector(".hint").textContent=FUELS[v].u);}
+      if(p.startsWith("recBase.")){const k=p.split(".")[1];if(S.m.rec[k]<v){S.m.rec[k]=v;syncPath("m.rec."+k);}}
+      if(p.startsWith("mode.")||p==="occ"||p.startsWith("mix.")||p==="plate"||p==="recov"){const mp="m."+p;if(get(mp)!==undefined&&!touched[mp]){set(mp,v);syncPath(mp);}}
+      if(p.startsWith("m."))touched[p]=1;
+      update();});});
+  document.querySelectorAll("[data-normal]").forEach(b=>b.addEventListener("click",()=>{const base=b.dataset.normal;normalize(get(base));
+    document.querySelectorAll(`[data-p^="${base}."]`).forEach(sync);update();}));
+  document.querySelectorAll("[data-ppm]").forEach(b=>b.addEventListener("click",()=>{S.phys.ppm=+b.dataset.ppm;syncPath("phys.ppm");update();}));
+  document.querySelectorAll("[data-act]").forEach(c=>{c.checked=!!S.risk.acts[c.dataset.act];c.addEventListener("change",()=>{S.risk.acts[c.dataset.act]=c.checked;update();});});
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+  $("#printBtn").addEventListener("click",()=>window.print());
+  $("#resetBtn").addEventListener("click",()=>{const k={lang:S.lang,lvl:S.lvl};S=clone(DEF);Object.assign(S,k);S.tab="plan";touched={};buildPanels();applyStatic();setTab("plan");});
+  document.querySelectorAll(".motion-toggle").forEach(b=>b.addEventListener("click",()=>{motionPaused=!motionPaused;document.body.classList.toggle("motion-paused",motionPaused);document.querySelectorAll(".motion-toggle").forEach(el=>el.textContent=motionPaused?L(P("Oynat","Play")):L(P("Duraklat","Pause")));}));
+  $("#schoolName").value=S.school;$("#schoolName").addEventListener("input",e=>{S.school=e.target.value;save();drawPlan();});
+}
+let touched={};
+function syncPath(p){const el=document.getElementById("i-"+p.replace(/\./g,"_"));if(el)sync(el);}
+function sync(el){const v=get(el.dataset.p);if(el.type==="checkbox")el.checked=!!v;else el.value=v;out(el);}
+function out(el){const o=document.getElementById("o"+el.id);if(o)o.textContent=FMT[el.dataset.f](el.value);}
+function normalize(o){const ks=Object.keys(o),s=ks.reduce((a,k)=>a+o[k],0)||1;let acc=0;ks.forEach((k,i)=>{if(i<ks.length-1){o[k]=Math.round(o[k]*100/s);acc+=o[k];}else o[k]=Math.max(0,100-acc);});}
+function sumNote(id,o){const el=$("#sum-"+id);if(!el)return;const s=Object.values(o).reduce((a,b)=>a+b,0);el.innerHTML=s===100?`<span class="ok-sum">${t("sum100")}</span>`:`<span class="bad-sum">${t("sumBad",{n:s})}</span>`;}
+
+/* =================== Açıklamalar =================== */
+const EX={
+ inv:{o:P("Karbon ayak izi, okulun bir yılda atmosfere saldığı tüm sera gazlarının toplamıdır. Metan ve diyazot monoksit gibi gazlar, ısıtma güçlerine göre CO₂ eşdeğerine (CO₂e) çevrilir. En büyük dilim, ilk işe başlanacak yeri gösterir.","A carbon footprint is the total greenhouse gas a school emits in a year. Gases such as methane and nitrous oxide are converted to CO₂-equivalent (CO₂e) by their warming power. The biggest slice shows where to start."),
+  l:P("Envanter, faaliyet verisi × emisyon faktörü ilkesine dayanır. Kapsam 1 okulda yakılan yakıt, Kapsam 2 satın alınan elektrik, Kapsam 3 ise ulaşım, yemek ve atık gibi dolaylı salımlardır. Yemek çoğu okulda en büyük kalemdir.","Inventories multiply activity data by emission factors. Scope 1 is fuel burned on site, Scope 2 purchased electricity, Scope 3 indirect sources such as commuting, food and waste. Food is often the largest item."),
+  u:P("Yakıt yanması IPCC 2006 Tier 1 faktörleriyle, atık metanı sabit geçmiş atık akışına dayalı basitleştirilmiş IPCC FOD yaklaşımıyla hesaplanır; GWP100 değerleri AR6’dan alınmıştır (fosil CH₄ 29,8; biyojenik CH₄ 27,0; N₂O 273). Biyojenik CO₂ ayrıca raporlanır. Belirsizlik, bağımsız lognormal kategori çarpanlarıyla gerçekleştirilen 2000 Monte Carlo denemesinden gelir.","Combustion uses IPCC 2006 Tier 1 (commercial/institutional) factors; landfill methane uses a simplified IPCC FOD approach assuming a constant historical waste flow; GWP100 values are from AR6 (fossil CH₄ 29.8; biogenic CH₄ 27.0; N₂O 273). Biogenic CO₂ is reported as a memo item. Uncertainty is based on 2000 Monte Carlo draws of independent lognormal category factors."),
+  f:`E_CO2e = Σ AD × EF × GWP
+E_yakıt = Q × NCV × (EF_CO2 + EF_CH4·29,8 + EF_N2O·273)
+Doğal gaz: 56 100 kg CO2/TJ · NCV ≈ 34,5 MJ/m³`},
+ energy:{o:P("Eski lambaları LED ile değiştirmek aynı ışığı daha az enerjiyle verir. Yalıtım binaya mont giydirmek gibidir. Isı pompası, havadaki ısıyı içeri taşıyarak harcadığı her birim elektrikle yaklaşık üç birim ısı verir.","LEDs give the same light with less energy. Insulation is like a coat for the building. A heat pump moves heat from outside air and delivers about three units of heat per unit of electricity."),
+  l:P("Kömürden doğal gaza geçiş salımı azaltır ama sıfırlamaz. Isı pompası elektrikle çalıştığı için faydası şebekenin temizliğine bağlıdır; güneş paneliyle birleşince etkisi büyür.","Switching from coal to gas cuts emissions but does not eliminate them. A heat pump runs on electricity, so its benefit depends on how clean the grid is, and grows when paired with solar."),
+  u:P("Yararlı ısı talebi Q_u = Q × NCV × η_kazan olarak sabit tutulur; yalıtım ve termostat Q_u’yu azaltır. Isı pompası payı φ için elektrik = φ·Q_u/SCOP. IPCC AR6 WGIII, binalarda verimlilik ve elektrifikasyonun 2050’ye kadar salımları büyük ölçüde azaltabileceğini belirtir.","Useful heat Q_u = Q × NCV × η_boiler is held constant; insulation and thermostat reduce Q_u. For heat-pump share φ, electricity = φ·Q_u/SCOP. IPCC AR6 WGIII finds that efficiency and electrification can deeply cut building emissions by 2050."),
+  f:`Q_u' = Q_u × (1 − yalıtım) × (1 − 0,07·ΔT)
+E_el' = E_el × (1 − 0,35×0,55×LED) + φ·Q_u'/SCOP
+Yakıt' = (1 − φ)·Q_u' / η_yeni`},
+ solar:{o:P("Güneş panelleri ışığı doğrudan elektriğe çevirir. En çok üretim yazın olur, ama okul yazın kapalıdır. Fazla elektrik şebekeye verilir.","Solar panels turn sunlight straight into electricity. Output peaks in summer, when the school is closed, so the surplus goes to the grid."),
+  l:P("Aylık öz tüketim ve varsayımsal yıllık mahsuplaşma seçenekleri ayrı hesaplanır. Grafik, mevsimsel uyumsuzluğun neden depolama veya mahsuplaşma gerektirdiğini gösterir.","Monthly self-consumption and hypothetical annual netting are calculated separately. The chart shows why seasonal mismatch calls for storage or net metering."),
+  u:P("Özgül üretim; ışınım, eğim, sıcaklık kayıpları ve performans oranını içerir. Basit geri ödeme iskonto, bozunma (≈%0,5/yıl) ve fiyat artışını içermez. Yaşam döngüsü salımı (≈30–50 g CO₂e/kWh) bu modelde dahil değildir.","Specific yield bundles irradiance, tilt, temperature losses and performance ratio. Simple payback ignores discounting, degradation (≈0.5%/yr) and price escalation. Life-cycle emissions (≈30–50 g CO₂e/kWh) are not included."),
+  f:`Üretim = P × 1550 kWh/kWp
+Geri ödeme = kurulum maliyeti / (mahsuplaşan kWh × alış fiyatı + verilen kWh × satış fiyatı)`},
+ trans:{o:P("Bir otomobil genellikle bir iki kişi taşır, servis ise onlarca. Yürümek ve bisiklet hiç salım yapmaz.","A car usually carries one or two people, a shuttle dozens. Walking and cycling emit nothing."),
+  l:P("Birim yolcu-km’dir. Otomobil salımı doluluğa bölünür: araç paylaşımı kişi başı salımı hemen düşürür. Elektrikli otomobilin salımı şebekeye bağlıdır.","The unit is passenger-km. Car emissions are divided by occupancy, so car-sharing cuts per-person emissions at once. Electric car emissions depend on the grid."),
+  u:P("Faktörler yaklaşık değerlerdir (benzinli otomobil ≈0,165 kg/araç-km; otobüs ≈0,10 kg/yolcu-km). Belirsizlik ±%25 alınmıştır. Model talep etkisini içermez. Personel ulaşımı ayrıca otomobille gidiş geliş varsayımıyla hesaplanır.","Factors are approximate (petrol car ≈0.165 kg/vehicle-km; bus ≈0.10 kg/passenger-km). Uncertainty is set to ±25%. Induced demand is excluded. Staff commuting is modelled separately as car travel."),
+  f:`ykm = N × gün × 2 × d
+E_araba = ykm × pay × 0,165 / doluluk
+E_EV = ykm × pay × 0,18 kWh/km × EF_şebeke / doluluk`},
+ food:{o:P("Sığır ve kuzu eti üretimi çok fazla sera gazı çıkarır, çünkü bu hayvanlar sindirirken metan üretir ve çok yem ister. Baklagil yemekleri çok daha az salım yapar.","Beef and lamb production emits a lot because these animals produce methane while digesting and need much feed. Pulse dishes emit far less."),
+  l:P("Sığır etinin kilogram başına salımı baklagillerin yaklaşık 50 katıdır. Tabak artığını azaltmak, hiç yenmeyecek yiyeceğin üretimini önler.","Beef emits roughly 50 times more per kilogram than pulses. Cutting plate waste avoids producing food that is never eaten."),
+  u:P("Faktörler Poore & Nemecek (2018) küresel ortalamalarıdır; üretici arası değişkenlik çok büyüktür (belirsizlik ±%50). Öğün = 120 g protein kaynağı (baklagil 80 g kuru) + 0,45 kg CO₂e garnitür.","Factors are global means from Poore & Nemecek (2018); variation between producers is very large (±50%). Meal = 120 g protein source (80 g dry pulses) + 0.45 kg CO₂e sides."),
+  f:`E_öğün = EF_ürün × porsiyon + 0,45
+E = öğün/gün × gün × Σ(pay × E_öğün) / (1 − artık)`},
+ waste:{o:P("Çöp alanında çürüyen yemek ve kâğıt metan gazı çıkarır. Metan, karbondioksitten çok daha güçlü bir sera gazıdır. Kompost bu atığı gübreye çevirir.","Food and paper rotting in landfills produce methane, a far stronger greenhouse gas than CO₂. Composting turns this waste into fertiliser."),
+  l:P("Metanın 100 yıllık ısınma potansiyeli CO₂’nin 27–30 katıdır. Plastik depolamada metan üretmez ama fosil kaynaklıdır; geri dönüşümü malzeme tasarrufu sağlar.","Methane’s 100-year warming potential is 27–30 times CO₂. Plastic yields no landfill methane but is fossil-based; recycling saves material."),
+  u:P("Tek seferlik (yaşam boyu) kütle dengesi yöntemi kullanılır: DOCf = 0,5; F = 0,5; MCF ve OX depolama türüne göre. Kompost: 4 g CH₄ ve 0,3 g N₂O / kg yaş atık (IPCC Tablo 4.1). Geri dönüşüm kaçınım kredisi ihtiyatlı olarak sıfırdır.","A lifetime mass-balance approach is used: DOCf = 0.5; F = 0.5; MCF and OX by site type. Composting: 4 g CH₄ and 0.3 g N₂O per kg wet waste (IPCC Table 4.1). Recycling credits are conservatively zero."),
+  f:`CH4 = Σ W_i × DOC_i × DOCf × MCF × F × 16/12 × (1 − R) × (1 − OX)
+E = CH4 × 27,0 + W_kompost × (0,004×27 + 0,0003×273)`},
+ phys:{o:P("Güneş Dünya’yı ısıtır, Dünya da ısıyı uzaya geri yayar. CO₂ bu ısının bir kısmını tutar, tıpkı bir battaniye gibi. Battaniye kalınlaştıkça Dünya ısınır, ama okyanuslar büyük olduğu için ısınma yavaş gerçekleşir.","The Sun warms Earth and Earth radiates heat back to space. CO₂ traps some of that heat like a blanket. A thicker blanket means more warming, but the huge oceans make it happen slowly."),
+  l:P("CO₂’nin etkisi logaritmiktir: her iki katına çıkışta aynı zorlama (≈3,9 W/m²) eklenir. Grafik, sıcaklığın hızla yükselip sonra derin okyanus ısındıkça yavaşça dengeye yaklaştığını gösterir.","CO₂’s effect is logarithmic: each doubling adds the same forcing (≈3.9 W/m²). The curve rises quickly, then creeps towards equilibrium as the deep ocean warms."),
+  u:P("ΔF = (F₂ₓ/ln2)·ln(C/C₀), F₂ₓ = 3,93 W/m² (AR6). İki katmanlı model: C·dT/dt = F − λT − γ(T − T_d), C_d·dT_d/dt = γ(T − T_d); λ = F₂ₓ/ECS. Bu deney yalnızca CO₂ zorlamasını içerir; aerosoller (≈ −1,1 W/m²) ve diğer gazlar dahil değildir. 2019 toplam insan kaynaklı ERF: 2,72 W/m².","ΔF = (F₂ₓ/ln2)·ln(C/C₀), F₂ₓ = 3.93 W/m² (AR6). Two-layer model: C·dT/dt = F − λT − γ(T − T_d), C_d·dT_d/dt = γ(T − T_d); λ = F₂ₓ/ECS. Only CO₂ forcing is included; aerosols (≈ −1.1 W/m²) and other gases are not. Total anthropogenic ERF in 2019: 2.72 W/m²."),
+  f:`ΔF = 5,67 · ln(C / 278)          [W/m²]
+ΔT_denge = ECS · ΔF / 3,93
+C=7,3  C_d=106 W·yıl·m⁻²·K⁻¹   γ=0,73 W·m⁻²·K⁻¹`},
+ ssp:{o:P("Bilim insanları, insanlığın gelecekte ne kadar salım yapacağına göre farklı senaryolar hazırlar. Salımı hızla azaltırsak ısınma 1,5 °C civarında kalabilir; artırırsak yüzyıl sonunda 4 °C’yi aşabilir.","Scientists build scenarios for how much humanity might emit. Cutting fast could keep warming near 1.5 °C; rising emissions could exceed 4 °C by 2100."),
+  l:P("SSP adındaki ilk sayı sosyoekonomik yolu, ikinci sayı 2100’deki yaklaşık ışınımsal zorlamayı (W/m²) gösterir. Her ek ısınma artışı, aşırı sıcakların sıklığını ve şiddetini belirgin biçimde artırır.","In an SSP name, the first number is the socio-economic pathway and the second the approximate 2100 forcing (W/m²). Every increment of warming clearly increases the frequency and intensity of hot extremes."),
+  u:P("Değerler AR6 WGI Tablo SPM.1 (1850–1900’e göre, 20 yıllık ortalamalar, çok olası aralık) ve deniz seviyesi için 1995–2014’e göre 2100 olası aralığıdır. Aşırı olay katsayıları Şekil SPM.6’daki medyanlardır; ara değerler doğrusal enterpolasyondur.","Values are from AR6 WGI Table SPM.1 (relative to 1850–1900, 20-year means, very likely range) and likely 2100 sea-level ranges relative to 1995–2014. Extreme-event multipliers are medians from Figure SPM.6; intermediate values are linearly interpolated."),
+  f:`SSPx-y : x = sosyoekonomik yol, y ≈ 2100 zorlaması (W/m²)`},
+ budget:{o:P("Dünya’nın ne kadar ısınacağı, toplamda ne kadar CO₂ saldığımıza bağlıdır. 1,5 °C sınırı için kalan miktar, bugünkü hızla yalnızca birkaç yıl yeter.","How much Earth warms depends on the total CO₂ we emit. At today’s rate the amount left for 1.5 °C lasts only a few years."),
+  l:P("TCRE: her 1000 Gt CO₂ yaklaşık 0,45 °C ısınma demektir. Salımları sıfıra doğrusal düşürürsek bütçe iki kat uzun sürer; bu yüzden azaltımın hemen başlaması önemlidir.","TCRE: each 1000 Gt CO₂ causes about 0.45 °C. A linear decline to zero makes the budget last twice as long, which is why cuts must start now."),
+  u:P("Bütçeler AR6 WGI Tablo SPM.2’den (1 Ocak 2020’den itibaren, yuvarlanmış); CO₂ dışı salımlar ve tahmin belirsizlikleri bütçeyi ±220 Gt değiştirebilir. 1850–2019 tarihsel toplam: 2390 ± 240 Gt CO₂. TCRE olası aralığı 0,27–0,63 °C / 1000 Gt CO₂.","Budgets are from AR6 WGI Table SPM.2 (from 1 Jan 2020, rounded); non-CO₂ emissions and other uncertainties can shift them by ±220 Gt. Historical 1850–2019 total: 2390 ± 240 Gt CO₂. TCRE likely range 0.27–0.63 °C per 1000 Gt CO₂."),
+  f:`Kalan = Bütçe_2020 − Salınan(2020→bugün)
+Yıl (sabit) = Kalan / E   ·   Yıl (doğrusal sıfır) = 2·Kalan / E
+ΔT ≈ 0,45 °C × E_toplam / 1000 Gt`},
+ adapt:{o:P("Salımları azaltmak geleceği korur; uyum ise bugünkü tehlikelere hazırlanmaktır. Gölge ağaçları, yağmur suyu toplama ve tatbikatlar okulu daha güvenli yapar.","Cutting emissions protects the future; adaptation prepares for today’s hazards. Shade trees, rainwater harvesting and drills make the school safer."),
+  l:P("Tehlikeyi okul olarak değiştiremeyiz, ama maruziyeti (ne kadar etkilendiğimiz) ve kırılganlığı (ne kadar hazırlıksız olduğumuz) azaltabiliriz. Burdur Gölü’nün küçülmesi, kuraklık riskinin bölgemizdeki somut bir örneğidir.","A school cannot change the hazard, but it can reduce exposure and vulnerability. The shrinking of Lake Burdur is a local example of drought risk."),
+  u:P("Risk = Tehlike × Maruziyet × Kırılganlık, IPCC AR6 WGII çerçevesinin basitleştirilmiş, gösterim amaçlı bir indeksidir. Tehlike, AR6 SPM.6 sıklık oranlarının 1,1 °C’ye göre artışıyla (üs 0,3) ölçeklenir; bu bir kalibrasyon değil öğretim tercihidir. Kötü uyum (maladaptation) riskini tartışın.","Risk = Hazard × Exposure × Vulnerability is a simplified, illustrative index of the IPCC AR6 WGII framework. Hazard scales with the AR6 SPM.6 frequency ratio relative to 1.1 °C (exponent 0.3); this is a teaching choice, not a calibration. Discuss the risk of maladaptation."),
+  f:`R = H' × E' × V'
+H' = min(5, H × (f(ID)/f(1,1))^0,3)   ·   her önlem: E veya V − 1`},
+ path:{o:P("Türkiye 2053’te net sıfır salıma ulaşmayı hedefliyor. İki çizgi arasındaki yeşil alan, önlemlerinle kurtardığın atmosferdir.","Türkiye aims for net zero by 2053. The green area between the lines is the atmosphere your measures save."),
+  l:P("IPCC’ye göre ısınmayı 1,5 °C ile sınırlamak için küresel sera gazı salımı 2019’a göre 2030’da %43, 2035’te %60 azalmalıdır. Senaryonun bu çizginin altında mı?","IPCC says limiting warming to 1.5 °C requires global GHG cuts of 43% by 2030 and 60% by 2035 relative to 2019. Is your scenario below that line?"),
+  u:P("Referans yollar AR6 SYR’deki küresel medyan azaltımlardır (1,5 °C, aşımsız veya sınırlı aşım: 2030 %43, 2035 %60, 2040 %69, 2050 %84; 2 °C: %21, %35, %46, %64) ve okulun başlangıç salımına uygulanmıştır. Okul düzeyinde adil pay, ulusal koşullara göre farklılık gösterebilir.","Reference paths are AR6 SYR global median reductions (1.5 °C, no/limited overshoot: 2030 43%, 2035 60%, 2040 69%, 2050 84%; 2 °C: 21%, 35%, 46%, 64%) applied to the school baseline. A fair school-level share may differ by national circumstances."),
+  f:`EF_şebeke(y) = EF₀ × (1 − g)^(y − 2026)
+r(y) = clamp((y − başlangıç + 1)/süre, 0, 1)
+E(y) = E₀(y) − r(y) × [E₀(y) − E_önlem(y)]`}
+};
+function renderExplain(){
+  for(const k in EX){const el=$("#ex-"+k);if(!el)continue;
+    let h=`<p>${L(EX[k][S.lvl==="u"?"u":S.lvl==="l"?"l":"o"])}</p>`;
+    if(S.lvl!=="o")h+=`<div class="formula">${S.lang==="tr"?EX[k].f:EX[k].f.replace(/Doğal gaz/,"Natural gas").replace(/yakıt/g,"fuel").replace(/denge/,"eq").replace(/gün/g,"days").replace(/pay/g,"share").replace(/doluluk/g,"occupancy").replace(/öğün/g,"meal").replace(/artık/g,"waste").replace(/porsiyon/g,"portion").replace(/ürün/g,"food").replace(/kompost/g,"compost").replace(/yalıtım/g,"insulation").replace(/yeni/g,"new").replace(/Üretim/g,"Yield").replace(/Geri ödeme/g,"Payback").replace(/maliyet/g,"cost").replace(/Tüketim/g,"Demand").replace(/fiyat/g,"price").replace(/şebeke/g,"grid").replace(/başlangıç/g,"start").replace(/süre/g,"period").replace(/önlem/g,"measures").replace(/Kalan/g,"Remaining").replace(/Bütçe/g,"Budget").replace(/Salınan/g,"Emitted").replace(/bugün/g,"now").replace(/Yıl \(sabit\)/,"Years (constant)").replace(/Yıl \(doğrusal sıfır\)/,"Years (linear to zero)").replace(/toplam/g,"cum").replace(/her önlem/,"each action").replace(/veya/,"or").replace(/sosyoekonomik yol/,"socio-economic pathway").replace(/zorlaması/,"forcing").replace(/W·yıl/,"W·yr")}</div>`;
+    if(k==="inv"&&S.lvl==="u")h+=`<p id="mcOut" style="margin-top:10px"></p>`;
+    el.innerHTML=h;}
+}
+
+/* =================== Grafik araçları =================== */
+function prep(c){const r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.max(1,r.width*d);c.height=Math.max(1,r.height*d);
+  const x=c.getContext("2d");x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,r.width,r.height);x.font='13px "Atkinson Hyperlegible",system-ui,sans-serif';return [x,r.width,r.height];}
+const PAL=()=>[css("--risk"),css("--co2"),css("--sky"),css("--violet"),css("--sun"),css("--leaf"),css("--muted")];
+function nice(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;}
+function rr(x,X,Y,w,h,r){if(h<=0||w<=0)return;r=Math.min(r,h/2,w/2);x.beginPath();x.moveTo(X,Y+h);x.lineTo(X,Y+r);x.quadraticCurveTo(X,Y,X+r,Y);x.lineTo(X+w-r,Y);x.quadraticCurveTo(X+w,Y,X+w,Y+r);x.lineTo(X+w,Y+h);x.closePath();x.fill();}
+function axisY(x,pl,pt,iw,ih,mx,mn=0,dec){x.strokeStyle=css("--line");x.lineWidth=1;x.fillStyle=css("--muted");x.textAlign="right";
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4,y=pt+ih-ih*i/4;x.beginPath();x.moveTo(pl,y);x.lineTo(pl+iw,y);x.stroke();x.fillText(nf(v,dec??((mx-mn)<10?1:0)),pl-6,y+4);}}
+function legend(x,items,lx,ly,W){x.textAlign="left";items.forEach(s=>{const w=x.measureText(s.n).width+36;if(lx+w>W){lx=50;ly+=16;}x.fillStyle=s.c;x.fillRect(lx,ly-9,12,10);x.fillStyle=css("--ink");x.fillText(s.n,lx+17,ly);lx+=w;});}
+function donut(c,data){const [x,W,H]=prep(c);const tot=data.reduce((a,d)=>a+d.v,0)||1;const R=Math.min(H/2-10,W*0.2),cx=R+10,cy=H/2,r=R*.58;if(R<=4)return;let a=-Math.PI/2;const pal=PAL();
+  data.forEach((d,i)=>{const s=d.v/tot*Math.PI*2;x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,R,a,a+s);x.closePath();x.fillStyle=pal[i%pal.length];x.fill();a+=s;});
+  x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.fillStyle=css("--surface");x.fill();x.fillStyle=css("--ink");x.textAlign="center";x.font='700 22px "Bricolage Grotesque",sans-serif';x.fillText(nf(tot),cx,cy+4);
+  x.font='12px "Atkinson Hyperlegible",sans-serif';x.fillStyle=css("--muted");x.fillText("t CO₂e",cx,cy+22);
+  x.textAlign="left";let ly=Math.max(18,cy-data.length*12);const lx=cx+R+20;x.font='13.5px "Atkinson Hyperlegible",sans-serif';
+  data.forEach((d,i)=>{x.fillStyle=pal[i%pal.length];x.fillRect(lx,ly-10,12,12);x.fillStyle=css("--ink");x.fillText(`${d.l}  ${nf(d.v,1)} t (${pf(nf(d.v/tot*100))})`,lx+18,ly);ly+=24;});}
+function bars(c,labels,series,o={}){const [x,W,H]=prep(c);const pl=48,pr=10,pt=28,pb=30,iw=W-pl-pr,ih=H-pt-pb;
+  let mx=0;series.forEach(s=>s.v.forEach(v=>mx=Math.max(mx,v)));mx=nice(mx||1);axisY(x,pl,pt,iw,ih,mx);
+  const g=iw/labels.length,bw=Math.min(30,g*.78/series.length);
+  labels.forEach((l,i)=>{series.forEach((s,j)=>{const h=s.v[i]/mx*ih;x.fillStyle=s.c;rr(x,pl+g*i+(g-bw*series.length)/2+bw*j,pt+ih-h,bw-2,h,4);});
+    x.fillStyle=css("--muted");x.textAlign="center";x.fillText(l,pl+g*i+g/2,H-10);});legend(x,series,pl,14,W);}
+function hbars(c,items,o={}){const [x,W,H]=prep(c);const pl=o.pl||170,pr=70,n=items.length,rh=Math.min(40,(H-10)/n);const mx=o.max||Math.max(...items.flatMap(i=>[i.v,i.v2??0]),.001);
+  items.forEach((it,i)=>{const y=6+i*rh;x.fillStyle=css("--ink");x.textAlign="right";x.fillText(it.l,pl-10,y+rh/2+4);
+    if(it.v2!=null){x.fillStyle=css("--line");rr(x,pl,y+rh*.15,(W-pl-pr)*it.v2/mx,rh*.7,5);}
+    const w=(W-pl-pr)*it.v/mx;x.fillStyle=it.c||css("--co2");rr(x,pl,y+rh*(it.v2!=null?.32:.18),Math.max(w,1),rh*(it.v2!=null?.36:.64),5);
+    x.textAlign="left";x.fillStyle=css("--muted");x.fillText(o.fmt?o.fmt(it):nf(it.v,1),pl+Math.max(w,(W-pl-pr)*(it.v2??0)/mx)+8,y+rh/2+4);});}
+function lines(c,xs,series,o={}){const [x,W,H]=prep(c);const pl=50,pr=14,pt=30+(o.legendRows||0)*16,pb=30,iw=W-pl-pr,ih=H-pt-pb;
+  let mx=o.max||0;if(!o.max){series.forEach(s=>s.v.forEach(v=>mx=Math.max(mx,v)));(o.bands||[]).forEach(b=>b.hi.forEach(v=>mx=Math.max(mx,v)));mx=nice(mx||1);}
+  axisY(x,pl,pt,iw,ih,mx,0,o.dec);const X=i=>pl+iw*(xs[i]-xs[0])/(xs[xs.length-1]-xs[0]),Y=v=>pt+ih-clamp(v,0,mx)/mx*ih;
+  (o.fills||[]).forEach(f=>{x.beginPath();f.a.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));for(let i=xs.length-1;i>=0;i--)x.lineTo(X(i),Y(f.b[i]));x.closePath();x.fillStyle=f.c;x.globalAlpha=f.al??1;x.fill();x.globalAlpha=1;});
+  (o.bands||[]).forEach(b=>{x.beginPath();b.hi.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));for(let i=xs.length-1;i>=0;i--)x.lineTo(X(i),Y(b.lo[i]));x.closePath();x.globalAlpha=.3;x.fillStyle=b.c;x.fill();x.globalAlpha=1;});
+  (o.hlines||[]).forEach(h=>{x.strokeStyle=h.c;x.setLineDash([3,4]);x.lineWidth=1.5;x.beginPath();x.moveTo(pl,Y(h.v));x.lineTo(pl+iw,Y(h.v));x.stroke();x.setLineDash([]);x.fillStyle=h.c;x.textAlign="right";x.fillText(h.n,pl+iw,Y(h.v)-5);});
+  series.forEach(s=>{x.beginPath();let st=false;s.v.forEach((v,i)=>{if(v==null)return;st?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v));st=true;});x.strokeStyle=s.c;x.lineWidth=s.w||2.5;x.setLineDash(s.dash||[]);x.stroke();x.setLineDash([]);});
+  x.fillStyle=css("--muted");x.textAlign="center";const step=o.xstep||5;xs.forEach((v,i)=>{if(v%step===0||i===0||i===xs.length-1)x.fillText(o.xfmt?o.xfmt(v):v,X(i),H-10);});
+  legend(x,series.filter(s=>s.n),pl,14,W);}
+function ranges(c,items,o){const [x,W,H]=prep(c);const pl=50,pr=14,pt=20,pb=30,iw=W-pl-pr,ih=H-pt-pb,mx=o.max;axisY(x,pl,pt,iw,ih,mx);
+  const g=iw/items.length;const Y=v=>pt+ih-v/mx*ih;
+  (o.hlines||[]).forEach(h=>{x.strokeStyle=h.c;x.setLineDash([3,4]);x.beginPath();x.moveTo(pl,Y(h.v));x.lineTo(pl+iw,Y(h.v));x.stroke();x.setLineDash([]);x.fillStyle=h.c;x.textAlign="left";x.fillText(h.n,pl+4,Y(h.v)-5);});
+  items.forEach((it,i)=>{const cx=pl+g*i+g/2;x.fillStyle=it.c;x.globalAlpha=.3;rr(x,cx-14,Y(it.hi),28,Y(it.lo)-Y(it.hi),6);x.globalAlpha=1;
+    x.fillRect(cx-16,Y(it.v)-1.5,32,3);x.fillStyle=css("--ink");x.textAlign="center";x.font='700 13px "Atkinson Hyperlegible",sans-serif';x.fillText(nf(it.v,1),cx,Y(it.hi)-6);
+    x.font='13px "Atkinson Hyperlegible",sans-serif';x.fillStyle=css("--muted");x.fillText(it.l,cx,H-10);});}
+function stats(id,a){const el=$("#st-"+id);if(el)el.innerHTML=a.map(s=>`<div class="stat ${s[2]||""}"${s[3]?` title="${s[3]}"`:""}><b>${s[1]}</b><span>${L(s[0])}</span></div>`).join("");}
+
+
+/* =================== MotionLab educational process scenes =================== */
+let motionPaused=false;
+function motionNode(x,y,w,label,value,color){return `<rect class="node" x="${x}" y="${y}" width="${w}" height="75" rx="15"/><rect x="${x+8}" y="${y+9}" width="5" height="56" rx="2" fill="${color}"/><text x="${x+20}" y="${y+29}">${label}</text><text class="mini" x="${x+20}" y="${y+49}">${value}</text>`;}
+function motionLine(x1,y1,x2,y2,kind=""){return `<path class="pipe" d="M${x1} ${y1}L${x2} ${y2}"/><path class="track ${kind}" d="M${x1} ${y1}L${x2} ${y2}"/>`;}
+function drawMotion(tab){
+ const root=document.querySelector("#motion-"+tab);if(!root)return;
+ const en=S.lang==="en",txt=(a,b)=>en?b:a;
+ let body="",cap="",title=txt("Canlı süreç görselleştirmesi","Animated process view");
+ const leaf=css("--leaf"),sky=css("--sky"),sun=css("--sun"),risk=css("--risk");
+ const val=(v,u)=>nf(Math.max(0,v),1)+" "+u;
+ if(tab==="solar"){
+  const pv=M.pv;
+  body=motionLine(145,106,240,106,"warn")+motionLine(390,106,480,106,"blue")+
+  motionNode(10,70,135,txt("Güneş panelleri","Solar panels"),val(M.pvGen/1000,"MWh"),sun)+
+  motionNode(240,70,150,txt("Okul tüketimi","School demand"),val(pv.self/1000,"MWh"),leaf)+
+  motionNode(480,70,150,txt("Şebeke","Grid"),val(pv.exports/1000,"MWh"),sky)+
+  `<circle class="sunray" cx="80" cy="37" r="15" fill="${sun}" opacity=".7"/><g stroke="${sun}" stroke-width="3"><path class="sunray" d="M80 10v9 M80 55v9 M53 37h10 M97 37h10 M61 18l7 7 M92 49l7 7 M61 56l7-7 M92 25l7-7"/></g>`;
+  cap=txt("Üretim, aynı ay tüketilen enerji ve şebekeye aktarım yıllık toplamlarıdır; animasyon temsili gösterimdir.","Annual generation, same-month self-consumption and grid exports; motion illustrates flow, not real-time power.");
+ }else if(tab==="energy"){
+  body=motionLine(170,106,235,106,"warn")+motionLine(405,106,465,106,"blue")+
+  motionNode(8,70,162,txt("Isı ihtiyacı","Heat demand"),val(M.h.useful,"GJ"),risk)+
+  motionNode(235,70,170,txt("Isıtma sistemi","Heating system"),val(M.h.hpKWh,"kWh HP"),sky)+
+  motionNode(465,70,160,txt("Salım","Emissions"),val(M.heat,"t CO₂e"),sun)+
+  `<path class="pulse" d="M320 44c-22-17 22-23 0-39" stroke="${risk}" fill="none" stroke-width="5" stroke-linecap="round"/>`;
+  cap=txt("Yalıtım, yakıt seçimi ve ısı pompası ayarlarını değiştirerek akış değerlerini güncelleyin.","Change insulation, fuel and heat-pump settings to update the displayed flow quantities.");
+ }else if(tab==="trans"){
+  const walk=M.tr.walk+M.tr.bike,other=M.tr.bus+M.tr.service+M.tr.car+M.tr.ev;
+  body=motionLine(173,106,238,106,"blue")+motionLine(405,106,464,106,"warn")+
+  motionNode(12,70,161,txt("Yolculuklar","Journeys"),val(M.pkm/1000,"bin yolcu-km"),sky)+
+  motionNode(238,70,167,txt("Yürüyüş/bisiklet","Walk / cycle"),val(walk,"t CO₂e"),leaf)+
+  motionNode(464,70,163,txt("Motorlu ulaşım","Motor transport"),val(other+M.staffTrans,"t CO₂e"),risk)+
+  `<g class="roadcar" transform="translate(25 20)"><rect x="0" y="4" width="65" height="24" rx="8" fill="${sky}"/><circle cx="13" cy="30" r="7" fill="${risk}"/><circle cx="51" cy="30" r="7" fill="${risk}"/></g>`;
+  cap=txt("Ulaşım türleri ve araç doluluğu değiştiğinde emisyonlar yeniden hesaplanır.","Commuting emissions update as mode shares and vehicle occupancy change.");
+ }else if(tab==="waste"){
+  body=motionLine(166,106,241,106,"warn")+motionLine(403,106,466,106,"blue")+
+  motionNode(8,70,158,txt("Toplam atık","Total waste"),val(S.waste,txt("t/yıl","t/yr")),risk)+
+  motionNode(241,70,162,txt("Depolama","Landfill"),val(M.land/1000,txt("t/yıl","t/yr")),sun)+
+  motionNode(466,70,161,txt("Metan","Methane"),val(M.ch4,txt("kg CH₄/yıl","kg CH₄/yr")),risk)+
+  `<g class="pulse"><circle cx="321" cy="36" r="19" fill="${sun}" opacity=".28"/><text x="303" y="41" font-size="12">CH₄</text></g>`;
+  cap=txt("Metan değeri basitleştirilmiş FOD modelindendir. Hareketli akış gerçek gaz çıkış hızı değildir.","Methane is estimated by the simplified FOD model. Motion is not an actual gas emission rate.");
+ }else if(tab==="phys"){
+  const f=F2X/Math.LN2*Math.log(S.phys.ppm/C0),eq=S.phys.ecs*f/F2X;
+  body=motionLine(165,106,241,106,"warn")+motionLine(407,106,463,106,"warn")+
+  motionNode(8,70,157,txt("Atmosferik CO₂","Atmospheric CO₂"),nf(S.phys.ppm)+" ppm",sky)+
+  motionNode(241,70,166,txt("Işınımsal zorlama","Radiative forcing"),nf(f,2)+" W/m²",sun)+
+  motionNode(463,70,164,txt("Denge sıcaklığı","Equilibrium warming"),nf(eq,2)+" °C",risk)+
+  `<circle class="pulse" cx="81" cy="37" r="21" fill="${sky}" opacity=".24"/>`;
+  cap=txt("Şemadaki zorlamanın ve sıcaklığın değerleri modele bağlıdır; animasyon fiziksel zaman ölçeğini göstermez.","Forcing and equilibrium response come from the model; the animation does not represent its time scale.");
+ }else if(tab==="inv"||tab==="path"){
+  body=motionLine(169,106,240,106,"warn")+motionLine(407,106,466,106,"blue")+
+  motionNode(8,70,161,txt("Başlangıç","Baseline"),val(B.total,t("perYear")),risk)+
+  motionNode(240,70,167,txt("Önlemler","Measures"),val(Math.max(0,B.total-M.total),t("perYear")),leaf)+
+  motionNode(466,70,160,txt("Sonuç","Outcome"),val(M.total,t("perYear")),sun);
+  cap=txt("Okulun yıllık hesaplanmış salımlarıdır; akış animasyonu emisyonların zamansal gelişimi değildir.","Calculated annual school emissions; the flow animation is not a time-resolved emissions simulation.");
+ }else if(tab==="food"){
+  body=motionLine(165,106,240,106,"warn")+motionLine(406,106,468,106,"blue")+
+  motionNode(8,70,157,txt("Öğün sayısı","Number of meals"),nf(S.meals*S.days),sky)+
+  motionNode(240,70,166,txt("Öğün başına","Per meal"),val(M.mealAvg,"kg CO₂e"),sun)+
+  motionNode(468,70,159,txt("Yıllık salım","Annual emissions"),val(M.food,"t CO₂e"),risk);
+  cap=txt("Öğün karışımı ve tabak atığı seçimlerine göre yıllık hesap güncellenir.","Annual estimates respond to meal mix and plate-waste settings.");
+ }else {root.hidden=true;return;}
+ root.hidden=false;
+ root.querySelector(".motion-title").textContent=title;
+ root.querySelector(".motion-note").textContent=cap;
+ root.querySelector(".motion-toggle").textContent=motionPaused?txt("Oynat","Play"):txt("Duraklat","Pause");
+ root.querySelector(".motion-display").innerHTML=`<svg class="motion-scene" role="img" aria-label="${title}" viewBox="0 0 640 174" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+}
+
+/* =================== Güncelleme =================== */
+let B,M;
+function update(){
+  B=calc(baseM());M=calc(S.m);
+  $("#hTotal").innerHTML=nf(M.total,1)+"<small>"+t("perYear")+"</small>";
+  $("#hPer").innerHTML=nf(M.total*1000/Math.max(1,S.students))+"<small>"+t("perStudent")+"</small>";
+  const d=(M.total-B.total)/B.total*100;$("#hDelta").textContent=pf(nf(Math.abs(d),1))+" "+t(d<=0?"less":"more");$("#hDelta").style.color=d<=0?css("--leaf"):css("--risk");
+  jarTarget(B.total,M.total);
+  sumNote("mode",S.mode);sumNote("m_mode",S.m.mode);sumNote("mix",S.mix);sumNote("m_mix",S.m.mix);sumNote("comp",S.comp);
+  drawTab();save();
+}
+const fuelU=k=>FUELS[k].u;
+function drawTab(){
+ const tb=S.tab,lg=S.lang;drawMotion(tb);
+ if(tb==="inv"){
+  donut($("#c-inv"),Object.keys(CAT).map(k=>({l:L(CAT[k]).replace(/ \(.*\)/,""),v:B[k]})));
+  const s1=B.heat,s2=B.elec,s3=B.trans+B.food+B.waste+B.paper+B.water;
+  hbars($("#c-scope"),[{l:L(P("Kapsam 1","Scope 1")),v:s1,c:css("--risk")},{l:L(P("Kapsam 2","Scope 2")),v:s2,c:css("--co2")},{l:L(P("Kapsam 3","Scope 3")),v:s3,c:css("--sky")},
+    {l:L(P("Biyojenik CO₂ (ayrı)","Biogenic CO₂ (memo)")),v:B.h.bio,c:css("--leaf")}],{pl:150});
+  const tpc=6.6;
+  stats("inv",[[P("Toplam","Total"),nf(B.total,1)+" t CO₂e"],[P("Öğrenci başına","Per student"),nf(B.total*1000/S.students)+" kg"],
+   [P("En büyük kaynak","Largest source"),L(CAT[Object.keys(CAT).sort((a,b)=>B[b]-B[a])[0]]).replace(/ \(.*\)/,""),"b"],
+   [P("Depo metanı","Landfill methane"),nf(B.ch4/1000,2)+" t CH₄","r"]]);
+  if(S.lvl==="u"){const mc=monte(baseM(),2000),o=$("#mcOut");if(o)o.innerHTML=`<b>${t("mcRange")}:</b> ${nf(mc.p5,1)} – ${nf(mc.p95,1)} t CO₂e; ${t("median")} ${nf(mc.p50,1)} t.`;}
+ }
+ if(tb==="energy"){
+  const bh=B.h,mh=M.h;
+  bars($("#c-energy"),[L(P("Elektrik (MWh)","Electricity (MWh)")),L(P("Yararlı ısı (100 GJ)","Useful heat (100 GJ)")),L(P("Salım (t CO₂e)","Emissions (t CO₂e)"))],[
+   {n:L(P("Başlangıç","Baseline")),c:css("--muted"),v:[B.elecUse/1000,bh.useful/100,B.heat+B.elec]},
+   {n:L(P("Önlemlerle","With measures")),c:css("--leaf"),v:[M.elecUse/1000,mh.useful/100,M.heat+calc({...S.m,pv:0}).elec]}]);
+  const kwh=(S.elec-(M.elecUse-mh.hpKWh)),fuelCost0=S.fuelQty*S.m.baseFuelPrice,fuelCost1=mh.fuelQty*S.m.fuelPrice;
+  const cost0=S.elec*S.m.elecPrice+fuelCost0,cost1=M.elecUse*S.m.elecPrice+fuelCost1;
+  stats("energy",[[P("Aydınlatma ve bekleme tasarrufu","Lighting & standby savings"),nf(kwh)+" kWh","g"],[P("Isı pompası elektriği","Heat-pump electricity"),nf(mh.hpKWh)+" kWh","b"],
+   [P("Yeni yakıt miktarı","New fuel quantity"),nf(mh.fuelQty)+" "+fuelU(S.m.fuel),""],[P("Isınma salımı","Heating emissions"),nf(B.heat,1)+" → "+nf(M.heat,1)+" t","g"],
+   [P("Yıllık enerji gideri farkı","Annual energy cost change"),(cost1<=cost0?"−":"+")+nf(Math.abs(cost1-cost0))+" TL",cost1<=cost0?"g":"r",L(P("Başlangıç ve hedef yakıt fiyatlarını ayrı ayrı girin.","Enter baseline and target fuel prices separately."))]]);
+ }
+ if(tb==="solar"){
+  const prod=M.pv.prod.map(v=>v/1000),use=M.pv.use.map(v=>v/1000);
+  bars($("#c-solar"),MONTHS[lg],[{n:L(P("Tüketim","Demand")),c:css("--sky"),v:use},{n:L(P("Güneş üretimi","Solar output")),c:css("--sun"),v:prod}]);
+  const self=M.pv.self/1000,cost=S.m.pv*S.m.pvCost,sav=M.pv.offset*S.m.elecPrice+M.pv.paidExports*S.m.exportCredit;
+  stats("solar",[[P("Yıllık üretim","Annual output"),nf(M.pvGen/1000,1)+" MWh","s"],[P("Aynı ay içinde kullanılan","Used in the same month"),M.pvGen?pf(nf(self*1000/M.pvGen*100)):"–","s"],
+   [P("Çatı alanı","Roof area"),nf(S.m.pv*5.5)+" m²"],[P("Önlenen salım","Avoided emissions"),nf(M.pv.offset*S.grid/1000,1)+" t/"+L(P("yıl","yr")),"g"],
+   [P("Şebekeye aktarılan","Exported to grid"),nf(M.pv.exports/1000,1)+" MWh","b"],[P("Yatırım","Investment"),nf(cost)+" TL"],[P("Basit geri ödeme","Simple payback"),sav>0?nf(cost/sav,1)+" "+L(P("yıl","yr")):"–"]]);
+ }
+ if(tb==="trans"){
+  hbars($("#c-trans"),Object.keys(MODES).map(k=>({l:L(MODES[k]),v:M.tr[k],v2:B.tr[k],c:k==="car"?css("--risk"):(k==="walk"||k==="bike")?css("--leaf"):css("--co2")})),{fmt:it=>nf(it.v,1)+" t"});
+  stats("trans",[[P("Yıllık yolcu-km","Passenger-km per year"),nf(M.pkm/1e6,2)+" "+L(P("milyon","million"))],[P("Ulaşım salımı","Commuting emissions"),nf(B.trans,1)+" → "+nf(M.trans,1)+" t","g"],
+   [P("Personel ulaşımı","Staff commuting"),nf(M.staffTrans,1)+" t CO₂e","b"],[P("Öğrenci başına (toplam/öğrenci)","Total per student"),nf(M.trans*1000/S.students)+" kg"],[P("Gri çubuk","Grey bar"),L(P("başlangıç","baseline")),"b"]]);
+ }
+ if(tb==="food"){
+  hbars($("#c-food"),Object.keys(FOODS).map(k=>({l:L(FOODS[k].n),v:mealEF(k),c:k==="beef"||k==="lamb"?css("--risk"):k==="legume"?css("--leaf"):css("--co2")})),{fmt:it=>nf(it.v,2)+" kg",pl:200});
+  stats("food",[[P("Ortalama öğün","Average meal"),nf(B.mealAvg,2)+" → "+nf(M.mealAvg,2)+" kg"],[P("Yemek salımı","Food emissions"),nf(B.food,1)+" → "+nf(M.food,1)+" t","g"],
+   [P("Yıllık öğün","Meals per year"),nf(S.meals*S.days)],[P("Tabak artığı etkisi","Plate waste effect"),pf(nf(100/(1-S.m.plate/100)-100))+" "+L(P("fazla üretim","extra production")),"r"]]);
+ }
+ if(tb==="waste"){
+  bars($("#c-waste"),[L(P("Depolama","Landfill")),L(P("Geri dönüşüm","Recycling")),L(P("Kompost","Compost"))],[
+   {n:L(P("Başlangıç","Baseline")),c:css("--muted"),v:[B.land/1000,B.recy/1000,B.comp/1000]},{n:L(P("Hedef","Target")),c:css("--leaf"),v:[M.land/1000,M.recy/1000,M.comp/1000]}]);
+  stats("waste",[[P("Depo metanı","Landfill methane"),nf(B.ch4,0)+" → "+nf(M.ch4,0)+" kg CH₄","r"],[P("Atık salımı","Waste emissions"),nf(B.waste,1)+" → "+nf(M.waste,1)+" t CO₂e","g"],
+   [P("Depolamadan kurtarılan","Diverted from landfill"),nf((B.land-M.land)/1000,1)+" t","g"],[P("Kâğıt salımı","Paper emissions"),nf(B.paper,1)+" → "+nf(M.paper,1)+" t"]]);
+ }
+ if(tb==="phys")drawPhys();
+ if(tb==="ssp")drawSSP();
+ if(tb==="budget")drawBudget();
+ if(tb==="adapt")drawRisk();
+ if(tb==="path")drawPath();
+ if(tb==="plan")drawPlan();
+}
+
+function simEBM(ppm,ecs,yrs){const F=F2X/Math.LN2*Math.log(ppm/C0),lam=F2X/ecs;let T=0,Td=0;const out=[0],dt=.05;
+  for(let y=1;y<=yrs;y++){for(let s=0;s<1/dt;s++){const dT=(F-lam*T-EBM.g*(T-Td))/EBM.C,dTd=EBM.g*(T-Td)/EBM.Cd;T+=dT*dt;Td+=dTd*dt;}out.push(T);}return {F,eq:ecs*F/F2X,T:out};}
+function drawPhys(){
+  const {ppm,ecs}=S.phys,yrs=300,xs=[...Array(yrs+1).keys()];
+  const r=simEBM(ppm,ecs,yrs),lo=simEBM(ppm,2.5,yrs),hi=simEBM(ppm,4.0,yrs);
+  const mx=nice(Math.max(.5,r.eq,hi.eq)*1.05);
+  lines($("#c-phys"),xs,[{n:"ECS "+nf(ecs,1)+" °C",c:css("--risk"),v:r.T}],{bands:[{lo:lo.T.map((v,i)=>Math.min(v,hi.T[i])),hi:hi.T.map((v,i)=>Math.max(v,lo.T[i])),c:css("--co2")}],
+    hlines:[{v:r.eq,c:css("--muted"),n:L(P("denge","equilibrium"))+" "+nf(r.eq,2)+" °C"}],max:mx,xstep:50,dec:1,xfmt:v=>v+(v===300?" "+L(P("yıl","yr")):"")});
+  const i70=r.T[70],pct20=r.eq?r.T[20]/r.eq*100:0;const needGt=(ppm-419)*2.124*3.664/0.44;
+  stats("phys",[[P("Işınımsal zorlama","Radiative forcing"),nf(r.F,2)+" W/m²","r"],[P("Denge ısınması","Equilibrium warming"),nf(r.eq,2)+" °C","r"],
+   [P("70. yılda ısınma","Warming at year 70"),nf(i70,2)+" °C"],[P("20 yılda gerçekleşen","Realised after 20 yr"),pf(nf(pct20))],
+   [P("CO₂ değişimi (1750’ye göre)","CO₂ change vs 1750"),(ppm>=C0?"+":"")+pf(nf((ppm/C0-1)*100)),"b"],
+   [P("419 ppm’den bu düzeye gerekli salım","Emissions needed from 419 ppm"),needGt>0?"≈"+nf(needGt)+" Gt CO₂":"–","b",L(P("1 ppm = 2,124 GtC; havada kalan oran ≈%44","1 ppm = 2.124 GtC; airborne fraction ≈44%"))]]);
+}
+function drawSSP(){
+  const per=S.ssp.period,cols=[css("--leaf"),css("--sky"),css("--sun"),css("--co2"),css("--risk")];
+  ranges($("#c-ssp"),SSP.map((s,i)=>({l:s.id,v:s[per][0],lo:s[per][1],hi:s[per][2],c:cols[i]})),{max:6,hlines:[{v:1.5,c:css("--leaf"),n:"1,5 °C".replace(",",S.lang==="tr"?",":".")},{v:2,c:css("--co2"),n:"2 °C"}]});
+  const wl=S.ssp.wl;
+  hbars($("#c-ext"),EXT.map(e=>({l:L(e.n).length>46?L(e.n).slice(0,44)+"…":L(e.n),v:interp(WLS,e.f,wl),c:css("--risk")})),{fmt:it=>nf(it.v,1)+"×",pl:Math.min(330,$("#c-ext").clientWidth*.55),max:40});
+  $("#tbl-ext").innerHTML=`<thead><tr><th>${L(P("Senaryo","Scenario"))}</th><th>${L(P("2081–2100 ısınma","Warming 2081–2100"))}</th><th>${L(P("Deniz seviyesi 2100","Sea level 2100"))}</th><th>CO₂ 2100</th></tr></thead><tbody>${
+   SSP.map(s=>`<tr class="${s.long[1]<=wl&&wl<=s.long[2]?"sel":""}"><td><b>${s.id}</b></td><td class="n">${nf(s.long[0],1)} °C (${nf(s.long[1],1)}–${nf(s.long[2],1)})</td><td class="n">${nf(s.slr[0],2)}–${nf(s.slr[1],2)} m</td><td class="n">≈${s.ppm} ppm</td></tr>`).join("")}
+   </tbody><caption style="caption-side:bottom;text-align:left" class="src">${L(P("Vurgulanan satırlar, seçilen ısınma düzeyini uzun vadeli aralığında içeren senaryolardır.","Highlighted rows contain the selected warming level within their long-term range."))}</caption>`;
+  const sh=[P("Sıcak olay (10 yıl): şiddet","Hot extreme (10-yr): intensity"),P("Sıcak olay (50 yıl): şiddet","Hot extreme (50-yr): intensity"),P("Şiddetli yağış: şiddet","Heavy rain: intensity"),P("Tarımsal kuraklık: şiddet","Agricultural drought: intensity")];
+  stats("ssp",EXT.map((e,i)=>[sh[i],"+"+nf(interp(WLS,e.i,wl),1)+(e.iu==="%"?"%":" "+e.iu),i<2?"r":"b"]));
+}
+function drawBudget(){
+  const b=S.bud,total=GCB2026[b.target],rem=total,yC=rem/b.rate,yL=2*rem/b.rate;
+  const years=[];for(let y=2026;y<=2060;y++)years.push(y);
+  const cst=years.map(y=>(y-2026<yC?b.rate:null));const lin=years.map(y=>Math.max(0,b.rate*(1-(y-2026)/yL)));
+  lines($("#c-bud"),years,[{n:L(P("Sabit salım (bütçe bitene dek)","Constant (until exhausted)")),c:css("--risk"),v:cst},{n:L(P("Doğrusal azalma","Linear decline")),c:css("--leaf"),v:lin}],
+   {fills:[{a:lin,b:years.map(()=>0),c:css("--leafsoft")}],max:nice(b.rate*1.15),xstep:10});
+  const perCap=rem/b.pop;const school=M.total/S.students;
+  stats("budget",[[P("Kalan bütçe (2026 başı, GCB 2025)","Remaining (start 2026, GCB 2025)"),nf(total)+" Gt CO₂"],[P("Hedef için kalan (%50)","Remaining for target (50%)"),nf(rem)+" Gt CO₂","r"],
+   [P("Bugünkü hızla tükenme","Exhausted at today’s rate"),rem?"≈"+nf(2026+yC,0):"–","r"],[P("Doğrusal azalmada net sıfır","Net zero with linear decline"),rem?"≈"+nf(2026+yL,0):"–","g"],
+   [P("Kişi başı eşit pay (toplam)","Equal per-capita share (total)"),nf(perCap,1)+" t CO₂","b"],
+   [P("Okulda öğrenci başı yıllık","School per student, yearly"),nf(school,2)+" t CO₂e","b",L(P("Karşılaştırma: Türkiye kişi başı ≈6–7 t CO₂e/yıl","Compare: Türkiye per capita ≈6–7 t CO₂e/yr"))],
+   [P("Kalan bütçenin ısınma etkisi","Warming from remaining budget"),"+"+nf(rem*.45/1000,2)+" °C (TCRE)","s"]]);
+}
+function riskVals(k,withActs){const r=S.risk[k],f=interp(WLS,EXT[0].f,S.risk.wl)/interp(WLS,EXT[0].f,1.1);
+  const fh=k==="heat"?f:k==="drought"?interp(WLS,EXT[3].f,S.risk.wl)/interp(WLS,EXT[3].f,1.1):k==="flood"||k==="storm"?interp(WLS,EXT[2].f,S.risk.wl)/interp(WLS,EXT[2].f,1.1):Math.sqrt(f*interp(WLS,EXT[3].f,S.risk.wl)/interp(WLS,EXT[3].f,1.1));
+  const H=Math.min(5,r.h*Math.pow(fh,.3));let E=r.e,V=r.v;
+  if(withActs)HAZ[k].acts.forEach(a=>{if(S.risk.acts[k+"."+a[0]]){if(a[2]==="e")E=Math.max(1,E-1);else V=Math.max(1,V-1);}});return H*E*V;}
+const rCat=v=>v<20?[P("Düşük","Low"),css("--leaf")]:v<45?[P("Orta","Moderate"),css("--sun")]:v<80?[P("Yüksek","High"),css("--co2")]:[P("Çok yüksek","Very high"),css("--risk")];
+function drawRisk(){
+  const items=Object.keys(HAZ).map(k=>{const a=riskVals(k,true),b=riskVals(k,false);return {l:L(HAZ[k].n),v:a,v2:b,c:rCat(a)[1]};});
+  hbars($("#c-risk"),items,{max:125,pl:190,fmt:it=>nf(it.v2)+" → "+nf(it.v)+" ("+L(rCat(it.v)[0])+")"});
+  const n=Object.values(S.risk.acts).filter(Boolean).length;const top=items.slice().sort((a,b)=>b.v-a.v)[0];
+  stats("adapt",[[P("Seçilen uyum önlemi","Adaptation actions chosen"),String(n),"g"],[P("En yüksek kalan risk","Highest residual risk"),top.l,"r"],
+   [P("Toplam risk azalması","Total risk reduction"),pf(nf((1-items.reduce((a,i)=>a+i.v,0)/items.reduce((a,i)=>a+i.v2,0))*100)),"g"],
+   [P("Sıcak olay sıklığı","Hot extreme frequency"),nf(interp(WLS,EXT[0].f,S.risk.wl),1)+"×","r"]]);
+}
+function drawPath(){
+  const years=[];for(let y=2026;y<=2053;y++)years.push(y);const g=S.m.gridDecline/100;const b=[],s=[];
+  years.forEach(y=>{const gf=S.grid*Math.pow(1-g,y-2026),e0=calc(baseM(),null,gf).total,e1=calc(S.m,null,gf).total,r=clamp((y-S.m.start+1)/S.m.ramp,0,1);b.push(e0);s.push(e0-r*(e0-e1));});
+  const ref=k=>years.map(y=>{const ks=Object.keys(REF[k]).map(Number);return b[0]*(1-interp(ks,ks.map(x=>REF[k][x]),y));});
+  let bands=[];if(S.lvl==="u"){const mc=monte(S.m,800);bands=[{lo:s.map(v=>v*mc.p5/mc.p50),hi:s.map(v=>v*mc.p95/mc.p50),c:css("--leaf")}];}
+  lines($("#c-path"),years,[{n:L(P("Hiçbir şey yapmasak","No action")),c:css("--muted"),v:b,dash:[6,5]},{n:L(P("Senaryomuz","Our scenario")),c:css("--leaf"),v:s,w:3},
+    {n:"IPCC 1,5 °C".replace(",",S.lang==="tr"?",":"."),c:css("--sky"),v:ref("p15"),dash:[2,4],w:2},{n:"IPCC 2 °C",c:css("--violet"),v:ref("p20"),dash:[2,4],w:2}],
+   {fills:[{a:b,b:s,c:css("--leafsoft")}],bands,legendRows:1});
+  const cum=b.reduce((a,v,i)=>a+v-s[i],0),i30=years.indexOf(2030),i35=years.indexOf(2035);const red30=(1-s[i30]/b[0])*100,red35=(1-s[i35]/b[0])*100;
+  stats("path",[[P("2053’e kadar önlenen","Avoided by 2053"),nf(cum)+" t CO₂e","g"],[P("2030 azaltımı (IPCC 1,5 °C: %43)","2030 cut (IPCC 1.5 °C: 43%)"),pf(nf(red30)),red30>=43?"g":"r"],
+   [P("2035 azaltımı (IPCC 1,5 °C: %60)","2035 cut (IPCC 1.5 °C: 60%)"),pf(nf(red35)),red35>=60?"g":"r"],[P("2053’te kalan salım","Residual in 2053"),nf(s[s.length-1],1)+" t","b",L(P("Net sıfır için kalıcı karbon giderimiyle dengelenmeli","Must be balanced by durable carbon removal for net zero"))]]);
+}
+
+/* =================== Eylem planı =================== */
+function drawPlan(){
+  const base=baseM(),rows=[];
+  const add=(name,m,who,when,first)=>{const tt=calc(Object.assign({},base,m)),sv=B.total-tt.total;if(sv>0.05)rows.push({name,sv,who,when,first});};
+  add(P(`Aydınlatmanın %${S.m.led}’ini LED’e dönüştürmek`,`Convert ${S.m.led}% of lighting to LED`),{led:S.m.led},P("Okul idaresi, enerji kulübü","School management, energy club"),P("İlk dönem","First term"),P("Sınıf sınıf lamba envanteri","Classroom lamp inventory"));
+  add(P("Bekleme yüklerini kapatmak","Switch off standby loads"),{standby:S.m.standby},P("Enerji nöbetçileri","Energy monitors"),P("Hemen","Now"),P("Kapatma kontrol listesi","Switch-off checklist"));
+  add(P(`Yalıtım: ${L(INS_N[S.m.ins]).toLowerCase()}`,`Insulation: ${L(INS_N[S.m.ins]).toLowerCase()}`),{ins:S.m.ins},P("Okul idaresi, il müdürlüğü","Management, education authority"),P("Yaz tatili","Summer break"),P("Termal kamera ile ısı kaybı tespiti","Thermal-camera heat-loss survey"));
+  add(P(`Termostatı ${S.m.thermo} °C düşürmek`,`Lower thermostat by ${S.m.thermo} °C`),{thermo:S.m.thermo},P("Okul idaresi","Management"),P("Hemen","Now"),P("Sınıflarda sıcaklık ölçümü","Classroom temperature logging"));
+  add(P(`Yakıt değişimi: ${L(FUELS[S.m.fuel].n)}`,`Fuel switch: ${L(FUELS[S.m.fuel].n)}`),{fuel:S.m.fuel},P("Okul idaresi","Management"),P("1–2 yıl","1–2 years"),P("Kazan dairesi fizibilitesi","Boiler-room feasibility study"));
+  add(P(`Isının %${S.m.hp}’ini ısı pompasıyla karşılamak`,`Supply ${S.m.hp}% of heat by heat pump`),{hp:S.m.hp},P("Okul idaresi, belediye","Management, municipality"),P("2–3 yıl","2–3 years"),P("Isı yükü hesabı","Heat-load calculation"));
+  add(P(`${S.m.pv} kWp çatı güneş santrali`,`${S.m.pv} kWp rooftop solar`),{pv:S.m.pv},P("Okul idaresi, sponsorlar","Management, sponsors"),P("1–2 yıl","1–2 years"),P("Çatı statik ve alan ölçümü","Roof structural and area survey"));
+  add(P("Ulaşım dağılımını değiştirmek ve araç paylaşımı","Shift travel modes and car-share"),{mode:S.m.mode,occ:S.m.occ},P("Öğrenci meclisi, veliler","Student council, parents"),P("Dönem boyu","All term"),P("Ulaşım anketi, yürüyen okul otobüsü","Travel survey, walking bus"));
+  add(P("Bitki ağırlıklı menü","Plant-rich menu"),{mix:S.m.mix},P("Yemekhane, okul aile birliği","Canteen, parents’ association"),P("Bir sonraki ihale","Next catering contract"),P("Haftada iki baklagil günü","Two pulse days a week"));
+  add(P(`Tabak artığını %${S.m.plate}’ye indirmek`,`Cut plate waste to ${S.m.plate}%`),{plate:S.m.plate},P("Sıfır atık kulübü","Zero-waste club"),P("Hemen","Now"),P("Bir hafta artık tartımı","One-week plate-waste audit"));
+  add(P("Geri dönüşüm hedefleri","Recycling targets"),{rec:S.m.rec},P("Sıfır atık kulübü","Zero-waste club"),P("İlk dönem","First term"),P("Her sınıfa ayrıştırma kutuları","Sorting bins in every classroom"));
+  add(P(`Organik atığın %${S.m.compost}’ünü kompostlamak`,`Compost ${S.m.compost}% of organics`),{compost:S.m.compost},P("Fen öğretmenleri","Science teachers"),P("Bahar dönemi","Spring term"),P("Bahçede kompost alanı","Compost area in the garden"));
+  add(P("Depo gazı toplama için belediye ile iş birliği","Work with municipality on landfill gas"),{recov:S.m.recov},P("Okul idaresi, belediye","Management, municipality"),P("2+ yıl","2+ years"),P("Belediyeye resmî yazı","Formal letter to municipality"));
+  add(P(`Kâğıdı %${S.m.paperCut} azaltmak`,`Reduce paper by ${S.m.paperCut}%`),{paperCut:S.m.paperCut},P("Tüm öğretmenler","All teachers"),P("Hemen","Now"),P("Çift taraflı baskı varsayılanı","Duplex printing by default"));
+  rows.sort((a,b)=>b.sv-a.sv);
+  $("#tbl-mit").innerHTML=`<thead><tr><th>${L(P("Eylem","Action"))}</th><th>${L(P("Yıllık azaltım","Annual reduction"))}</th><th>${L(P("Sorumlu","Responsible"))}</th><th>${L(P("Zaman","Timing"))}</th><th>${L(P("İlk adım","First step"))}</th></tr></thead><tbody>${
+   rows.length?rows.map(r=>`<tr><td>${L(r.name)}</td><td class="n">${nf(r.sv,1)} t CO₂e</td><td>${L(r.who)}</td><td>${L(r.when)}</td><td>${L(r.first)}</td></tr>`).join(""):
+   `<tr><td colspan="5">${L(P("Henüz azaltım önlemi seçmedin. Okulumuz grubundaki modüllerde ayarları değiştir.","No mitigation measures yet. Adjust settings in the Our school modules."))}</td></tr>`}</tbody>`;
+  const ad=[];Object.keys(HAZ).forEach(k=>HAZ[k].acts.forEach(a=>{if(S.risk.acts[k+"."+a[0]])ad.push([HAZ[k].n,a[1],a[2]]);}));
+  $("#tbl-ad").innerHTML=`<thead><tr><th>${L(P("Tehlike","Hazard"))}</th><th>${L(P("Uyum önlemi","Adaptation action"))}</th><th>${L(P("Azalttığı","Reduces"))}</th></tr></thead><tbody>${
+   ad.length?ad.map(a=>`<tr><td>${L(a[0])}</td><td>${L(a[1])}</td><td>${L(a[2]==="e"?P("Maruziyet","Exposure"):P("Kırılganlık","Vulnerability"))}</td></tr>`).join(""):
+   `<tr><td colspan="3">${L(P("Uyum ve risk modülünde önlem seç.","Choose actions in the Adaptation & risk module."))}</td></tr>`}</tbody>`;
+  const nm=S.school||L(P("Okulumuz","Our school"));
+  stats("plan",[[P("Okul","School"),esc(nm),"b"],[P("Başlangıç","Baseline"),nf(B.total,1)+" t CO₂e"],[P("Hedef","Target"),nf(M.total,1)+" t CO₂e","g"],
+   [P("Azaltım","Reduction"),pf(nf((1-M.total/B.total)*100)),"g"]]);
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* =================== Sınav ve sözlük =================== */
+const Q={
+ o:[[P("Okula yürüyerek gelmenin salımı nedir?","What are the emissions of walking to school?"),[P("Sıfır","Zero"),P("Otomobille aynı","Same as a car"),P("Servisten fazla","More than a shuttle")],0,P("Yürümek yakıt yakmaz.","Walking burns no fuel.")],
+    [P("Çöp alanında yemek artıkları hangi gazı üretir?","Which gas does food waste make in a landfill?"),[P("Oksijen","Oxygen"),P("Metan","Methane"),P("Helyum","Helium")],1,P("Oksijensiz ortamda bozunma metan üretir.","Decay without oxygen produces methane.")],
+    [P("Hangi öğünün salımı en düşüktür?","Which meal has the lowest emissions?"),[P("Sığır eti","Beef"),P("Tavuk","Chicken"),P("Mercimek","Lentils")],2,P("Baklagiller çok az sera gazıyla üretilir.","Pulses are produced with very little greenhouse gas.")],
+    [P("IPCC nedir?","What is the IPCC?"),[P("Bir uzay ajansı","A space agency"),P("Hükümetlerarası İklim Değişikliği Paneli","Intergovernmental Panel on Climate Change"),P("Bir enerji şirketi","An energy company")],1,P("IPCC, iklim bilimini değerlendiren BM kuruluşudur.","The IPCC is the UN body that assesses climate science.")],
+    [P("2011–2020’de Dünya sanayi öncesine göre ne kadar ısındı?","How much had Earth warmed by 2011–2020 vs pre-industrial?"),[P("Yaklaşık 0,1 °C","About 0.1 °C"),P("Yaklaşık 1,1 °C","About 1.1 °C"),P("Yaklaşık 5 °C","About 5 °C")],1,P("AR6: 1,09 °C.","AR6: 1.09 °C.")]],
+ l:[[P("Okulda yakılan doğal gaz hangi kapsamdadır?","Natural gas burned at school belongs to which scope?"),[P("Kapsam 1","Scope 1"),P("Kapsam 2","Scope 2"),P("Kapsam 3","Scope 3")],0,P("Doğrudan, yerinde yanma Kapsam 1’dir.","Direct on-site combustion is Scope 1.")],
+    [P("AR6’ya göre fosil metanın GWP100 değeri?","Fossil methane GWP100 in AR6?"),[P("1","1"),P("29,8","29.8"),P("273","273")],1,P("273, N₂O’nun değeridir.","273 is the value for N₂O.")],
+    [P("CO₂ iki katına çıkınca ışınımsal zorlama yaklaşık ne kadardır?","Forcing from doubled CO₂ is about?"),[P("0,4 W/m²","0.4 W/m²"),P("3,9 W/m²","3.9 W/m²"),P("39 W/m²","39 W/m²")],1,P("AR6: 3,93 ± 0,47 W/m².","AR6: 3.93 ± 0.47 W/m².")],
+    [P("1,5 °C için 2030’da küresel salım 2019’a göre ne kadar azalmalı?","By 2030, global GHG must fall by how much vs 2019 for 1.5 °C?"),[P("%10","10%"),P("%43","43%"),P("%90","90%")],1,P("AR6 Sentez Raporu medyanı.","AR6 Synthesis Report median.")],
+    [P("Isı pompasının faydası en çok neye bağlıdır?","A heat pump’s benefit depends most on?"),[P("Şebekenin temizliğine","How clean the grid is"),P("Kömür fiyatına","Coal prices"),P("Çatı rengine","Roof colour")],0,P("Elektrikle çalıştığı için şebeke faktörü belirleyicidir.","It runs on electricity, so the grid factor decides.")]],
+ u:[[P("AR6’da ECS için en iyi tahmin ve olası aralık?","AR6 best estimate and likely range of ECS?"),[P("1,5 (1–2) °C","1.5 (1–2) °C"),P("3 (2,5–4) °C","3 (2.5–4) °C"),P("4,5 (3–6) °C","4.5 (3–6) °C")],1,P("AR6 WGI Bölüm 7.","AR6 WGI Chapter 7.")],
+    [P("TCRE’nin en iyi tahmini?","TCRE best estimate?"),[P("0,045 °C/1000 GtCO₂","0.045 °C/1000 GtCO₂"),P("0,45 °C/1000 GtCO₂","0.45 °C/1000 GtCO₂"),P("4,5 °C/1000 GtCO₂","4.5 °C/1000 GtCO₂")],1,P("Olası aralık 0,27–0,63.","Likely range 0.27–0.63.")],
+    [P("IPCC atık yönteminde DOCf varsayılan değeri?","Default DOCf in the IPCC waste method?"),[P("0,1","0.1"),P("0,5","0.5"),P("1,0","1.0")],1,P("Bozunabilen DOC oranı varsayılanı 0,5’tir.","The default fraction of DOC that decomposes is 0.5.")],
+    [P("1,5 °C (%50) için 2020 başından kalan bütçe?","Remaining 1.5 °C (50%) budget from 2020?"),[P("50 GtCO₂","50 GtCO₂"),P("500 GtCO₂","500 GtCO₂"),P("5000 GtCO₂","5000 GtCO₂")],1,P("AR6 Tablo SPM.2.","AR6 Table SPM.2.")],
+    [P("İki katmanlı modelde ısınmanın yavaş bileşenini ne belirler?","What sets the slow component in a two-layer model?"),[P("Atmosferin ısı kapasitesi","Atmospheric heat capacity"),P("Derin okyanusun ısı kapasitesi","Deep-ocean heat capacity"),P("Güneş sabiti","Solar constant")],1,P("C_d ≈ 106 W·yıl·m⁻²·K⁻¹ yüzyıllık zaman ölçeği verir.","C_d ≈ 106 W·yr·m⁻²·K⁻¹ gives a centennial timescale.")]]};
+function renderQuiz(){const qs=Q[S.lvl];let sc=0,dn=0;
+  $("#quiz").innerHTML=qs.map((q,i)=>`<div style="margin-bottom:14px"><div class="quiz-q">${i+1}. ${L(q[0])}</div><div class="quiz-opts" data-q="${i}">${q[1].map((a,j)=>`<button data-j="${j}">${L(a)}</button>`).join("")}</div><div class="qexp" id="qe${i}"></div></div>`).join("")+`<div id="qs" class="sub"></div>`;
+  document.querySelectorAll(".quiz-opts").forEach(box=>box.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||box.dataset.d)return;box.dataset.d=1;dn++;const q=qs[+box.dataset.q];
+    if(+b.dataset.j===q[2]){b.classList.add("ok");sc++;}else{b.classList.add("no");box.children[q[2]].classList.add("ok");}$("#qe"+box.dataset.q).textContent=L(q[3]);
+    $("#qs").textContent=L(P(`${dn}/${qs.length} yanıtlandı, ${sc} doğru`,`${dn}/${qs.length} answered, ${sc} correct`));}));}
+const GL=[[P("Karbon ayak izi","Carbon footprint"),P("Bir kişi, kurum veya ürünün neden olduğu toplam sera gazı salımı (CO₂e).","Total greenhouse gas emissions caused by a person, organisation or product (CO₂e).")],
+ [P("CO₂ eşdeğeri (CO₂e)","CO₂-equivalent (CO₂e)"),P("Farklı gazların etkisini, GWP ile çarparak CO₂ cinsinden ifade eden ölçü.","A measure expressing different gases in CO₂ terms by multiplying by their GWP.")],
+ [P("Küresel ısınma potansiyeli (GWP100)","Global warming potential (GWP100)"),P("Bir gazın 100 yılda, aynı kütlede CO₂’ye göre ne kadar ısınmaya yol açtığı.","How much warming a gas causes over 100 years relative to the same mass of CO₂.")],
+ [P("Işınımsal zorlama","Radiative forcing"),P("Bir etkenin Dünya’nın enerji dengesinde yarattığı değişim (W/m²).","The change in Earth’s energy balance caused by a driver (W/m²).")],
+ [P("Denge iklim duyarlılığı (ECS)","Equilibrium climate sensitivity (ECS)"),P("CO₂ iki katına çıktığında, denge kurulduktan sonraki küresel ısınma.","Global warming after equilibrium is reached for a doubling of CO₂.")],
+ [P("TCRE","TCRE"),P("Toplam CO₂ salımı başına geçici iklim tepkisi; ısınma ile birikimli salım arasındaki yaklaşık doğrusal ilişki.","Transient climate response to cumulative CO₂ emissions; the near-linear link between warming and cumulative emissions.")],
+ [P("Kalan karbon bütçesi","Remaining carbon budget"),P("Belirli bir sıcaklık sınırında belirli bir olasılıkla kalmak için salınabilecek toplam CO₂.","Total CO₂ that can still be emitted to stay below a temperature limit with a given likelihood.")],
+ [P("SSP","SSP"),P("Ortak Sosyoekonomik Yollar: nüfus, ekonomi ve teknoloji varsayımlarına dayalı gelecek senaryoları.","Shared Socioeconomic Pathways: futures based on population, economy and technology assumptions.")],
+ [P("Net sıfır","Net zero"),P("İnsan kaynaklı salımların, insan eliyle yapılan giderimlerle dengelenmesi.","Anthropogenic emissions balanced by anthropogenic removals.")],
+ [P("Azaltım","Mitigation"),P("Sera gazı salımlarını azaltan veya yutakları artıran insan müdahalesi.","Human intervention to reduce emissions or enhance sinks.")],
+ [P("Uyum","Adaptation"),P("Gerçek veya beklenen iklime ve etkilerine uyum sağlama süreci.","The process of adjusting to actual or expected climate and its effects.")],
+ [P("Risk","Risk"),P("Tehlike, maruziyet ve kırılganlığın etkileşiminden doğan olumsuz sonuç olasılığı.","Potential for adverse consequences from the interaction of hazard, exposure and vulnerability.")],
+ [P("Kötü uyum","Maladaptation"),P("Kırılganlığı ya da salımları istemeden artıran uyum eylemleri.","Adaptation actions that unintentionally increase vulnerability or emissions.")],
+ [P("Kapsam 1, 2, 3","Scope 1, 2, 3"),P("Doğrudan salımlar, satın alınan enerjiden kaynaklı dolaylı salımlar ve diğer dolaylı salımlar.","Direct emissions, indirect emissions from purchased energy, and other indirect emissions.")]];
+function renderGloss(){$("#gloss").innerHTML=GL.map(g=>`<dt>${L(g[0])}</dt><dd>${L(g[1])}</dd>`).join("");}
+
+/* =================== Atmosfer kavanozu =================== */
+const jar=$("#jar");let parts=[],jw=0,jh=0;const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function jarSize(){const r=jar.getBoundingClientRect(),d=devicePixelRatio||1;jw=r.width;jh=r.height;jar.width=jw*d;jar.height=jh*d;jar.getContext("2d").setTransform(d,0,0,d,0,0);}
+function jarTarget(b,m){const sc=260/Math.max(b,1);sizeTo("e",Math.round(Math.max(0,m)*sc));sizeTo("a",Math.round(Math.max(0,b-m)*sc));if(reduce)jarDraw();}
+function sizeTo(k,n){const cur=parts.filter(p=>p.k===k).length;if(cur<n)for(let i=cur;i<n;i++)parts.push({k,x:Math.random()*jw,y:k==="e"?Math.random()*jh*.75:jh*.55+Math.random()*jh*.35,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,r:k==="e"?3+Math.random()*2.5:3});
+  else{let rm=cur-n;parts=parts.filter(p=>!(p.k===k&&rm-->0));}}
+function jarDraw(){const x=jar.getContext("2d");x.clearRect(0,0,jw,jh);const ce=css("--co2"),cl=css("--leaf");
+  for(const p of parts){if(!reduce){p.x+=p.vx;p.y+=p.vy;p.vy+=p.k==="e"?-.004:.006;if(p.x<6||p.x>jw-6)p.vx*=-1;if(p.y<6){p.y=6;p.vy*=-.6;}if(p.y>jh-40){p.y=jh-40;p.vy*=-.5;}
+    p.vx+=(Math.random()-.5)*.05;p.vy+=(Math.random()-.5)*.05;p.vx*=.995;p.vy*=.995;}
+    x.beginPath();x.arc(p.x,p.y,p.r,0,Math.PI*2);if(p.k==="e"){x.fillStyle=ce;x.globalAlpha=.85;x.fill();}else{x.strokeStyle=cl;x.lineWidth=2;x.globalAlpha=.9;x.stroke();}x.globalAlpha=1;}}
+function loop(){jarDraw();requestAnimationFrame(loop);}
+
+/* =================== Gezinme =================== */
+const VALID=PANELS.map(p=>p.id);
+function setTab(id){S.tab=id;document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===id));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id==="p-"+id));if(location.hash.slice(1)!==id)history.replaceState(null,"","#"+id);drawTab();save();}
+function applyStatic(){document.documentElement.lang=S.lang;document.querySelectorAll("[data-i]").forEach(e=>e.textContent=t(e.dataset.i));
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===S.lang));
+  document.querySelectorAll("[data-lvl]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lvl===S.lvl));document.body.className="lvl-"+S.lvl;
+  document.title=S.lang==="tr"?"İklimLab: Okul İklim Simülatörü":"İklimLab: School Climate Simulator";
+  renderExplain();renderQuiz();renderGloss();update();}
+document.querySelectorAll("[data-lang]").forEach(b=>b.addEventListener("click",()=>{S.lang=b.dataset.lang;buildPanels();applyStatic();setTab(S.tab);}));
+document.querySelectorAll("[data-lvl]").forEach(b=>b.addEventListener("click",()=>{S.lvl=b.dataset.lvl;applyStatic();}));
+addEventListener("resize",()=>{jarSize();drawTab();});
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>drawTab());
+addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(VALID.includes(h)&&h!==S.tab)setTab(h);});
+const h0=location.hash.slice(1);if(VALID.includes(h0))S.tab=h0;
+buildPanels();jarSize();applyStatic();setTab(S.tab);
+if(!reduce)loop();
+if(document.fonts)document.fonts.ready.then(()=>drawTab());
+})();
+</script>
+</body>
+</html>
